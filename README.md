@@ -39,4 +39,38 @@ approximate / detect edges in a small picture.
 - 2D Array of pixels
   - S = {s(i,j);1<=i,j<=N}
     - each pixel s(i,j) can be 1 if it is an edge pixel or 0 if it is not an exge pixel
-    - 
+    - Set of possible edges
+    - Def 1: Edge E is a component of the set of edge pixels in an edge configuration S
+    - Def 2: A Sedment of an edge E is a subset of E that is connected
+    - Def 3: An edge pixel that is not contained in any cycle of length 3 is called a thin edge pixel, otherwise it 
+    is called a thick edge pixel-An edge that contains only thin edge pixels is called 
+    a thin edge
+    - Def 4: Let L be the NXN pixel site and L_ij be the 3x3 pixel site at position ij
+#### Cost function for edges
+- cost factors:
+  - curvature, dissimilarity, number of edge points, fragmentation, thickness
+##### Determining region Dissimilarity
+- assigning values to regions that have large dissimilarity
+  - dissimilarity image D= {d(i,j);1<=i,j<N}
+    - pixel value between 0<=d(i,j)<=1 (1 is a good candidate for edge)
+      - basis set of 12 selected edge structures
+        - dissimilar Region 1 and 2 are measured by f(R1,R2) = difference of average gray level (can be other approach) 
+### How to get enhanced image? (first gen)
+1) all pixel d(l) = 0
+2) for pixel site (NxN region)
+   1) Each edge structure from basis set is fitted by centering it on the location l in the image G
+      1) determine regions R1 and R2 for each structure and value of f(R1,R2) is computed
+      2) Structure with max f(R1,R2) is chosen as best fitted edge structure for l(at _ij)
+         1) denote 3 sites of 3 edge pixels l, l1 , l2
+   2) Nonmaximal suppression by shifting location of chosen best fitted edge in a perpendicular directiion determined by the edge structure
+      1) determine new f(R1,R2)
+         1) Either case: 
+            1) no larger -> we set delta=f(R1,R2)/3 with f(R1,R2) fo best fitted structure. We then increment the value of each pixels d(l), d(l1), d(l2) by delta
+            2) if larger no alter
+   3) all values of the pixels d(l) are truncated to a max of 1
+
+#### Cost Factors
+nonendpoint edge pixel -> #neighbouredges >1 
+## Curvature
+- assigns cost to nonendpoint edge pixel based on a local measure of curvature.
+- smooths out or remove curvy edges
