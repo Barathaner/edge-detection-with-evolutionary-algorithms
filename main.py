@@ -1,92 +1,306 @@
 import cv2
 import numpy as np
+import random
+from scipy.ndimage import convolve
+# basis edge structure two neighbouring set
+e_s1 = np.array([[0, 0, 0], [255, 255, 0], [0, 0, 255]], dtype='uint8')
+e_s2 = np.array([[0, 0, 255], [0, 255, 0], [0, 255, 0]], dtype='uint8')
+e_s3 = np.array([[255, 0, 0], [0, 255, 0], [0, 255, 0]], dtype='uint8')
+e_s4 = np.array([[0, 0, 255], [255, 255, 0], [0, 0, 0]], dtype='uint8')
+e_s5 = np.array([[0, 255, 0], [0, 255, 0], [0, 0, 255]], dtype='uint8')
+e_s6 = np.array([[0, 0, 0], [0, 255, 255], [255, 0, 0]], dtype='uint8')
+e_s7 = np.array([[0, 255, 0], [0, 255, 0], [255, 0, 0]], dtype='uint8')
+e_s8 = np.array([[255, 0, 0], [0, 255, 255], [0, 0, 0]], dtype='uint8')
+e_s9 = np.array([[0, 0, 255], [0, 255, 0], [255, 0, 0]], dtype='uint8')
+e_s10 = np.array([[255, 0, 0], [0, 255, 0], [0, 0, 255]], dtype='uint8')
+e_s11 = np.array([[0, 255, 0], [0, 255, 0], [0, 255, 0]], dtype='uint8')
+e_s12 = np.array([[0, 0, 0], [255, 255, 255], [0, 0, 0]], dtype='uint8')
 
-#basis edge set
-#left right
-region1_1 = np.array([[255, 255, 0, 0],[255, 255, 0, 0],[255, 255, 0, 0],[255, 255, 0, 0]])
-region2_1 = np.array([[0, 0, 255, 255],[0, 0, 255, 255],[0, 0, 255, 255],[0, 0, 255, 255]])
+# Region of interest
+r1_1 = np.array([[-1, -1], [0, -1], [1, -1], [1, 0]])
+r1_2 = np.array([[-1, 1], [0, 1], [-1, 2], [0, 2]])
+r2_1 = np.array([[-2, -1], [-1, -1], [-2, 0], [-1, 0]])
+r2_2 = np.array([[1, -1], [0, 1], [0, 1], [1, 1]])
+r3_1 = np.array([[0, -1], [0, -2], [1, -1], [1, -2]])
+r3_2 = np.array([[-1, 0], [-1, 1], [0, 1], [1, 1]])
+r4_1 = np.array([[1, 0], [2, 0], [1, 1], [2, 1]])
+r4_2 = np.array([[-1, -1], [-1, 0], [0, -1], [-1, 1]])
+r5_1 = np.array([[-1, -2], [-1, -1], [0, -1], [0, -2]])
+r5_2 = np.array([[1, 0], [-1, 1], [0, 1], [1, 1]])
+r6_1 = np.array([[1, -1], [1, 0], [2, -1], [2, 0]])
+r6_2 = np.array([[-1, -1], [-1, 0], [-1, 1], [0, 1]])
+r7_1 = np.array([[0, 1], [0, 2], [1, 1], [1, 2]])
+r7_2 = np.array([[-1, 0], [-1, -1], [0, -1], [1, -1]])
+r8_1 = np.array([[-2, 0], [-1, 0], [-2, 1], [-1, 1]])
+r8_2 = np.array([[0, -1], [1, -1], [1, 0], [1, 1]])
+r9_1 = np.array([[1, 0], [2, 0], [1, 1], [0, 1], [0, 2]])
+r9_2 = np.array([[-2, 0], [-1, 0], [-1, -1], [0, -1], [0, -2]])
+r10_1 = np.array([[2, 0], [1, 0], [1, -1], [0, -1], [0, -2]])
+r10_2 = np.array([[-2, 0], [-1, 0], [-1, 1], [0, 1], [0, 2]])
+r11_1 = np.array([[1, -1], [2, -1], [1, 0], [2, 0], [1, 1], [2, 1]])
+r11_2 = np.array([[-1, -1], [-2, -1], [-1, 0], [-2, 0], [-1, 1], [-2, 1]])
+r12_1 = np.array([[-1, 1], [-1, 2], [0, 1], [0, 2], [1, 1], [1, 2]])
+r12_2 = np.array([[-1, -1], [-1, -2], [0, -1], [0, -2], [1, -1], [1, 2]])
+
+edge_structures = [e_s1, e_s2, e_s3, e_s4, e_s5, e_s6, e_s7, e_s8, e_s9, e_s10, e_s11, e_s12]
+roi_one = [r1_1, r2_1, r3_1, r4_1, r5_1, r6_1, r7_1, r8_1, r9_1, r10_1, r11_1, r12_1]
+roi_two = [r1_2, r2_2, r3_2, r4_2, r5_2, r6_2, r7_2, r8_2, r9_2, r10_2, r11_2, r12_2]
+
+def calcDissimilarity(imgrey,x,y,darkregion, lightregion):
+    darkregionvalues = []
+    lightregionvalues = []
+    for pos in range(len(darkregion)):
+        greyvalueofdarkposx = x + darkregion[pos][0]
+        greyvalueofdarkposy = y + darkregion[pos][1]
+        greyvalueoflightposx = x + lightregion[pos][0]
+        greyvalueoflightposy = y + lightregion[pos][1]
+        try:
+            darkregionvalues.append(imgrey[greyvalueofdarkposx, greyvalueofdarkposy])
+            lightregionvalues.append(imgrey[greyvalueoflightposx, greyvalueoflightposy])
+        except:
+            continue
+
+    return abs((sum(darkregionvalues) / len(darkregionvalues)) - (sum(lightregionvalues) / len(lightregionvalues)))
+
+def generateEdgeEnhanced(imgrey):
+
+    dissimilarity_start_gen = np.zeros(imgrey.shape[:2], dtype='uint8')
+
+    h = imgrey.shape[0]
+    w = imgrey.shape[1]
+    for y in range(1, h - 2):
+        for x in range(1, w - 2):
+            dissimilarity_edge_struct = 0
+            bestfittingedgestructure = edge_structures[0]
+            best_index = 0
+            for es_index in range(0, len(edge_structures)):
+                dissresult = calcDissimilarity(imgrey,x,y,roi_one[es_index],roi_two[es_index])
+                if dissimilarity_edge_struct < dissresult:
+                    best_index = es_index
+                    dissimilarity_edge_struct = dissresult
+                    bestfittingedgestructure = edge_structures[es_index]
+
+            dissimilarity_start_gen[x,y] = dissimilarity_edge_struct
+            if best_index <= 7:
+                x_up= x
+                y_up = y-1
+                x_down = x
+                y_down = y+1
+                x_left = x-1
+                y_left = y
+                x_right = x+1
+                y_right = y
+                up_diss = calcDissimilarity(imgrey,x_up,y_up,roi_one[best_index],roi_two[best_index])
+                down_diss=calcDissimilarity(imgrey,x_down,y_down,roi_one[best_index],roi_two[best_index])
+                left_diss=calcDissimilarity(imgrey,x_left,y_left,roi_one[best_index],roi_two[best_index])
+                right_diss=calcDissimilarity(imgrey,x_left,y_left,roi_one[best_index],roi_two[best_index])
+
+                if max([dissimilarity_edge_struct,up_diss,down_diss,left_diss,right_diss]) == dissimilarity_edge_struct:
+                    dissimilarity_start_gen[x-1:x+2,y-1: y+2] += int(dissimilarity_edge_struct/3)
+
+            if 8 == best_index:
+                x_diagonal_up = x-1
+                y_diagonal_up = y-1
+                x_diagonal_down = x+1
+                y_diagonal_down = y+1
+                diss_diag_up = calcDissimilarity(imgrey,x_diagonal_up,y_diagonal_up,roi_one[best_index],roi_two[best_index])
+                diss_diag_down = calcDissimilarity(imgrey,x_diagonal_down,y_diagonal_down,roi_one[best_index],roi_two[best_index])
+
+                if max([dissimilarity_edge_struct,diss_diag_up,diss_diag_down]) == dissimilarity_edge_struct:
+                    dissimilarity_start_gen[x-1:x+2,y-1: y+2] += int(dissimilarity_edge_struct/3)
+            if 9 == best_index:
+                x_diagonal_up = x+1
+                y_diagonal_up = y-1
+                x_diagonal_down = x-1
+                y_diagonal_down = y+1
+                diss_diag_up = calcDissimilarity(imgrey,x_diagonal_up,y_diagonal_up,roi_one[best_index],roi_two[best_index])
+                diss_diag_down = calcDissimilarity(imgrey,x_diagonal_down,y_diagonal_down,roi_one[best_index],roi_two[best_index])
+
+                if max([dissimilarity_edge_struct,diss_diag_up,diss_diag_down]) == dissimilarity_edge_struct:
+                    dissimilarity_start_gen[x-1:x+2,y-1: y+2] += int(dissimilarity_edge_struct/3)
+            if 10 == best_index:
+                x_left = x - 1
+                y_left = y
+                x_right = x + 1
+                y_right = y
+                diss_left = calcDissimilarity(imgrey, x_left, y_left, roi_one[best_index],
+                                                 roi_two[best_index])
+                diss_right = calcDissimilarity(imgrey, x_right, y_right, roi_one[best_index],
+                                                   roi_two[best_index])
 
 
-#top down
-region1_2= np.array([[255, 255, 255, 255],[255, 255, 255, 255],[0, 0, 0, 0],[0, 0, 0, 0]])
-region2_2 = np.array([[0, 0, 0, 0],[0, 0, 0, 0],[255, 255, 255, 255],[255, 255, 255, 255]])
+                if max([dissimilarity_edge_struct,diss_left,diss_right]) == dissimilarity_edge_struct:
+                    dissimilarity_start_gen[x-1:x+2,y-1: y+2] += int(dissimilarity_edge_struct/3)
+            if 11 == best_index:
+                x_up = x - 1
+                y_up = y
+                x_down = x + 1
+                y_down = y
+                up_diss = calcDissimilarity(imgrey,x_up,y_up,roi_one[best_index],roi_two[best_index])
+                down_diss=calcDissimilarity(imgrey,x_down,y_down,roi_one[best_index],roi_two[best_index])
 
-#diagonal
-region1_3 = np.array([[255, 255, 255, 255],[255, 255, 0, 0],[255, 0, 0, 0],[0, 0, 0, 0]])
-region2_3 = np.array([[0, 0, 0, 0],[0, 0, 255, 255],[0, 255, 255, 255],[255, 255, 255, 255]])
+                if max([dissimilarity_edge_struct,up_diss,down_diss]) == dissimilarity_edge_struct:
+                    dissimilarity_start_gen[x-1:x+2,y-1: y+2] += int(dissimilarity_edge_struct/3)
 
-#diagonal reverse
-region1_4 = np.array([[255, 255, 255, 255],[0, 255, 255, 255],[0, 0, 255, 255],[0, 0, 0, 0]])
-region2_4 = np.array([[0, 0, 0, 0],[0, 0, 0, 255],[255, 255, 0, 0],[255, 255, 255, 255]])
+    return dissimilarity_start_gen
 
 
-regions=[(region1_1,region1_2),(region1_2,region2_2),(region1_3,region2_3),(region1_4,region2_4)]
-# w means weight for the Cost factors Curvature, Dissimilarity, number of edge points, fragmentation, thickness
-def curvature(edgeConfiguration):
+
+def truncate_to_one(inputImg):
+    img = inputImg
+    img=img.astype(float)
+    h = img.shape[0]
+    w = img.shape[1]
+    for y in range(0, h ):
+        for x in range(0, w):
+            img[y,x] = img[y,x] / 255.0
+
+    return img
+
+
+def createRandomChromosome(inputImg):
+    enhancedImg=inputImg
+    h = enhancedImg.shape[0]
+    w = enhancedImg.shape[1]
+    for y in range(0, h ):
+        for x in range(0, w):
+            enhancedImg[y,x] = np.random.randint(0,2)*int(enhancedImg[y,x] + random.random())
+
+    return enhancedImg
+
+
+
+def dissimilarity(edgeImage, pixelposition,diss):
+    if(edgeImage[pixelposition[0],pixelposition[1]] == 1):
+        return 0
+    else:
+        return diss[pixelposition[0],pixelposition[1]]
+
+
+def curvature(edgeImage, pixelposition):
+    pixelsite = edgeImage[pixelposition[1]-1:pixelposition[1]+2:,pixelposition[0]-1:pixelposition[0]+2:]
+
+    if pixelsite[0,0] ==1 and pixelsite[1,1]==1 and pixelsite[2,2] ==1 or  pixelsite[0,2] ==1 and pixelsite[1,1]==1 and pixelsite[2,] ==1:
+        return 0.5
+
+        pass
+
+
+def fragmentation(edgeImage, pixelposition):
+    pixelsite = edgeImage[pixelposition[1]-1:pixelposition[1]+2:,pixelposition[0]-1:pixelposition[0]+2:]
+    if pixelsite[1,1] ==1:
+        neighbourCounter=0
+        for y in range(0,3):
+            for x in range(0,3):
+                if y ==1 and x ==1:
+                    continue
+                else:
+                    if pixelsite[y,x] == 1:
+                        neighbourCounter+=1
+
+        if neighbourCounter==0:
+            return 1
+        if neighbourCounter==1:
+            return 0.5
+        if neighbourCounter >1:
+            return 0
+    else:
+        return 0
+
     pass
 
 
-def dissimilarity(edgeConfiguration):
-    pass
 
+def numberofEdgePixels(edgeImage,pixelposition):
+    pixelsite = edgeImage[pixelposition[1]-1:pixelposition[1]+2:,pixelposition[0]-1:pixelposition[0]+2:]
+    edgePixelCounter = 0
+    for y in range(0,3):
+        for x in range(0,3):
+            if edgePixelCounter ==2:
+                return 0
+            if pixelsite[y,x] == 1:
+                edgePixelCounter +=1
 
-def numberofpoints(edgeConfiguration):
-    pass
+    if edgePixelCounter == 1:
+        return 1
+    else :
+        return 1
 
+def thickness(edgeImage, pixelposition):
+    pixelsite = edgeImage[pixelposition[1] - 1:pixelposition[1] + 2:, pixelposition[0] - 1:pixelposition[0] + 2:]
+    if pixelsite[1,1] == 1:
+        for y in range(0,3):
+            for x in range(0,3):
+                grad = 0
+                if x ==1 and y==1:
+                    continue
 
-def fragmentation(edgeConfiguration):
-    pass
+                if pixelsite[y,x] == 1 :
+                    if x <2 and y <2:
+                        if pixelsite[y+1,x+1] ==1:
+                            grad+=1
+                        if  pixelsite[y,x+1] ==1:
+                            grad += 1
+                        if  pixelsite[y+1,x] ==1:
+                            grad += 1
+                    if x ==2 and y <2:
+                        if pixelsite[y,x-1] ==1:
+                            grad+=1
+                        if  pixelsite[y+1,x-1] ==1:
+                            grad += 1
+                        if  pixelsite[y+1,x] ==1:
+                            grad += 1
+                    if y ==2 and x <2:
+                        if pixelsite[y-1,x] ==1:
+                            grad+=1
+                        if  pixelsite[y-1,x+1] ==1:
+                            grad += 1
+                        if  pixelsite[y,x+1] ==1:
+                            grad += 1
+                    if y ==2 and x ==2:
+                        if pixelsite[y-1,x] ==1:
+                            grad+=1
+                        if  pixelsite[y-1,x-1] ==1:
+                            grad += 1
+                        if  pixelsite[y,x-1] ==1:
+                            grad += 1
+                if grad > 1:
+                    return 1
+        return 0
+    return 1
 
-
-def thickness(edgeConfiguration):
-    pass
 
 
 def edgecostminimization(edgeConfiguration, w_c, w_d, w_e, w_f, w_t):
-    fitness = w_c * curvature(edgeConfiguration) + w_d * dissimilarity(edgeConfiguration) + w_e * numberofpoints(edgeConfiguration) + w_f * fragmentation(edgeConfiguration) + w_t * thickness(edgeConfiguration)
+    fitness = w_c * curvature(edgeConfiguration) + w_d * dissimilarity(edgeConfiguration) + w_e * numberofEdgePixels(edgeConfiguration) + w_f * fragmentation(edgeConfiguration) + w_t * thickness(edgeConfiguration)
     return fitness
-
-def generatefirstgeneration(gray):
-    dissimilarity_start_gen = np.zeros(gray.shape, dtype=np.uint8)
-    for x in range(gray.shape[0]):
-        for y in range(gray.shape[1]):
-            fitt=0
-            for pattern in regions:
-                fittededgestructure = edgeStructure(gray[x - 2:x + 2, y - 2:y + 2],pattern[0],pattern[1])
-                newfitt=dissimilaritymeasure(fittededgestructure)
-
-                if newfitt>fitt:
-                    fitt=newfitt
-            dissimilarity_start_gen[x, y]= fitt
-    return dissimilarity_start_gen
-
-# S is a edgeStructure
-def dissimilaritymeasure(S):
-    return abs(S.R2.mean() - S.R1.mean())
-
-
-class edgeStructure:
-    l0=[]
-    l1=[]
-    l2=[]
-    R1= np.zeros([4,4],dtype=np.uint8)
-    R2= np.zeros([4,4],dtype=np.uint8)
-    def __init__(self, edgeneighbourhood,region1,region2):
-        if edgeneighbourhood.shape[0]==4 and edgeneighbourhood.shape[1]==4:
-            self.R1 = edgeneighbourhood.copy()
-            self.R1[region1==0] =0
-            self.R1[region1!=0]=edgeneighbourhood[region1!=0]
-            self.R2 = edgeneighbourhood.copy()
-            self.R2[region2==0] =0
-            self.R2[region2!=0]=edgeneighbourhood[region2!=0]
-
-
 
 if __name__ == '__main__':
 
     image = cv2.imread("cat.jpeg")
-    image = cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
-    fg = generatefirstgeneration(image)
-    cv2.imshow("input",fg)
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    # own try to make it from paper, comes out, that sobel is better :(
+    # enhancedImage= generateEdgeEnhanced(image)
+
+    # generation of enhanced image
+    scale = 1
+    delta = 0
+    ddepth = cv2.CV_16S
+    grad_x = cv2.Sobel(image, ddepth, 1, 0, ksize=3, scale=scale, delta=delta, borderType=cv2.BORDER_DEFAULT)
+    # Gradient-Y
+    # grad_y = cv.Scharr(gray,ddepth,0,1)
+    grad_y = cv2.Sobel(image, ddepth, 0, 1, ksize=3, scale=scale, delta=delta, borderType=cv2.BORDER_DEFAULT)
+
+    abs_grad_x = cv2.convertScaleAbs(grad_x)
+    abs_grad_y = cv2.convertScaleAbs(grad_y)
+
+    grad = cv2.addWeighted(abs_grad_x, 0.5, abs_grad_y, 0.5, 0)
+
+######################################################################################
+
+
+    enhancedImage =truncate_to_one(grad)
+    init_gen = createRandomChromosome(enhancedImage)
+    cv2.imshow("sossbel", init_gen)
     cv2.waitKey(0)
     cv2.destroyAllWindows()

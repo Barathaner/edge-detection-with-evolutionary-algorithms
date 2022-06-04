@@ -24,13 +24,13 @@ approximate / detect edges in a small picture.
     - continuity
 - Advantage local edge continuity
 - Search space large : 2^P P is Amount Pixel
-- two steps : dissimilarity enhancement -> enhance good points of image (user based measure)
+- two steps : dissimilarity enhancement -> enhance good points of imgrey (user based measure)
 ### What is an edge?
 - boundary that seperates two regions that have dissimilar characteristics
 - should accurately partition dissimilar regions, thin, continous, sufficient length
   - e.g. geometry, surface reflectance characteristics, viewpoint, illumination
 
-#### What is an Image (Input)
+#### What is an imgrey (Input)
 - 2D Array of pixels
   - G = {g(i,j;1<=i,j<=N)}
     - each pixel g(i,j) is a gray level
@@ -51,14 +51,14 @@ approximate / detect edges in a small picture.
   - curvature, dissimilarity, number of edge points, fragmentation, thickness
 ##### Determining region Dissimilarity
 - assigning values to regions that have large dissimilarity
-  - dissimilarity image D= {d(i,j);1<=i,j<N}
+  - dissimilarity imgrey D= {d(i,j);1<=i,j<N}
     - pixel value between 0<=d(i,j)<=1 (1 is a good candidate for edge)
       - basis set of 12 selected edge structures
         - dissimilar Region 1 and 2 are measured by f(R1,R2) = difference of average gray level (can be other approach) 
-### How to get enhanced image? (first gen)
+### How to get enhanced imgrey? (first gen)
 1) all pixel d(l) = 0
 2) for pixel site (NxN region)
-   1) Each edge structure from basis set is fitted by centering it on the location l in the image G
+   1) Each edge structure from basis set is fitted by centering it on the location l in the imgrey G
       1) determine regions R1 and R2 for each structure and value of f(R1,R2) is computed
       2) Structure with max f(R1,R2) is chosen as best fitted edge structure for l(at _ij)
          1) denote 3 sites of 3 edge pixels l, l1 , l2
