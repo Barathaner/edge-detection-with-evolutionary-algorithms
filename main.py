@@ -1,7 +1,11 @@
+import functools
+import math
+import operator
+
 import cv2
 import numpy as np
 import random
-from scipy.ndimage import convolve
+
 # basis edge structure two neighbouring set
 e_s1 = np.array([[0, 0, 0], [255, 255, 0], [0, 0, 255]], dtype='uint8')
 e_s2 = np.array([[0, 0, 255], [0, 255, 0], [0, 255, 0]], dtype='uint8')
@@ -46,7 +50,8 @@ edge_structures = [e_s1, e_s2, e_s3, e_s4, e_s5, e_s6, e_s7, e_s8, e_s9, e_s10, 
 roi_one = [r1_1, r2_1, r3_1, r4_1, r5_1, r6_1, r7_1, r8_1, r9_1, r10_1, r11_1, r12_1]
 roi_two = [r1_2, r2_2, r3_2, r4_2, r5_2, r6_2, r7_2, r8_2, r9_2, r10_2, r11_2, r12_2]
 
-def calcDissimilarity(imgrey,x,y,darkregion, lightregion):
+
+def calcDissimilarity(imgrey, x, y, darkregion, lightregion):
     darkregionvalues = []
     lightregionvalues = []
     for pos in range(len(darkregion)):
@@ -62,8 +67,8 @@ def calcDissimilarity(imgrey,x,y,darkregion, lightregion):
 
     return abs((sum(darkregionvalues) / len(darkregionvalues)) - (sum(lightregionvalues) / len(lightregionvalues)))
 
-def generateEdgeEnhanced(imgrey):
 
+def generateEdgeEnhanced(imgrey):
     dissimilarity_start_gen = np.zeros(imgrey.shape[:2], dtype='uint8')
 
     h = imgrey.shape[0]
@@ -74,135 +79,159 @@ def generateEdgeEnhanced(imgrey):
             bestfittingedgestructure = edge_structures[0]
             best_index = 0
             for es_index in range(0, len(edge_structures)):
-                dissresult = calcDissimilarity(imgrey,x,y,roi_one[es_index],roi_two[es_index])
+                dissresult = calcDissimilarity(imgrey, x, y, roi_one[es_index], roi_two[es_index])
                 if dissimilarity_edge_struct < dissresult:
                     best_index = es_index
                     dissimilarity_edge_struct = dissresult
                     bestfittingedgestructure = edge_structures[es_index]
 
-            dissimilarity_start_gen[x,y] = dissimilarity_edge_struct
+            dissimilarity_start_gen[x, y] = dissimilarity_edge_struct
             if best_index <= 7:
-                x_up= x
-                y_up = y-1
+                x_up = x
+                y_up = y - 1
                 x_down = x
-                y_down = y+1
-                x_left = x-1
+                y_down = y + 1
+                x_left = x - 1
                 y_left = y
-                x_right = x+1
+                x_right = x + 1
                 y_right = y
-                up_diss = calcDissimilarity(imgrey,x_up,y_up,roi_one[best_index],roi_two[best_index])
-                down_diss=calcDissimilarity(imgrey,x_down,y_down,roi_one[best_index],roi_two[best_index])
-                left_diss=calcDissimilarity(imgrey,x_left,y_left,roi_one[best_index],roi_two[best_index])
-                right_diss=calcDissimilarity(imgrey,x_left,y_left,roi_one[best_index],roi_two[best_index])
+                up_diss = calcDissimilarity(imgrey, x_up, y_up, roi_one[best_index], roi_two[best_index])
+                down_diss = calcDissimilarity(imgrey, x_down, y_down, roi_one[best_index], roi_two[best_index])
+                left_diss = calcDissimilarity(imgrey, x_left, y_left, roi_one[best_index], roi_two[best_index])
+                right_diss = calcDissimilarity(imgrey, x_left, y_left, roi_one[best_index], roi_two[best_index])
 
-                if max([dissimilarity_edge_struct,up_diss,down_diss,left_diss,right_diss]) == dissimilarity_edge_struct:
-                    dissimilarity_start_gen[x-1:x+2,y-1: y+2] += int(dissimilarity_edge_struct/3)
+                if max([dissimilarity_edge_struct, up_diss, down_diss, left_diss,
+                        right_diss]) == dissimilarity_edge_struct:
+                    dissimilarity_start_gen[x - 1:x + 2, y - 1: y + 2] += int(dissimilarity_edge_struct / 3)
 
             if 8 == best_index:
-                x_diagonal_up = x-1
-                y_diagonal_up = y-1
-                x_diagonal_down = x+1
-                y_diagonal_down = y+1
-                diss_diag_up = calcDissimilarity(imgrey,x_diagonal_up,y_diagonal_up,roi_one[best_index],roi_two[best_index])
-                diss_diag_down = calcDissimilarity(imgrey,x_diagonal_down,y_diagonal_down,roi_one[best_index],roi_two[best_index])
+                x_diagonal_up = x - 1
+                y_diagonal_up = y - 1
+                x_diagonal_down = x + 1
+                y_diagonal_down = y + 1
+                diss_diag_up = calcDissimilarity(imgrey, x_diagonal_up, y_diagonal_up, roi_one[best_index],
+                                                 roi_two[best_index])
+                diss_diag_down = calcDissimilarity(imgrey, x_diagonal_down, y_diagonal_down, roi_one[best_index],
+                                                   roi_two[best_index])
 
-                if max([dissimilarity_edge_struct,diss_diag_up,diss_diag_down]) == dissimilarity_edge_struct:
-                    dissimilarity_start_gen[x-1:x+2,y-1: y+2] += int(dissimilarity_edge_struct/3)
+                if max([dissimilarity_edge_struct, diss_diag_up, diss_diag_down]) == dissimilarity_edge_struct:
+                    dissimilarity_start_gen[x - 1:x + 2, y - 1: y + 2] += int(dissimilarity_edge_struct / 3)
             if 9 == best_index:
-                x_diagonal_up = x+1
-                y_diagonal_up = y-1
-                x_diagonal_down = x-1
-                y_diagonal_down = y+1
-                diss_diag_up = calcDissimilarity(imgrey,x_diagonal_up,y_diagonal_up,roi_one[best_index],roi_two[best_index])
-                diss_diag_down = calcDissimilarity(imgrey,x_diagonal_down,y_diagonal_down,roi_one[best_index],roi_two[best_index])
+                x_diagonal_up = x + 1
+                y_diagonal_up = y - 1
+                x_diagonal_down = x - 1
+                y_diagonal_down = y + 1
+                diss_diag_up = calcDissimilarity(imgrey, x_diagonal_up, y_diagonal_up, roi_one[best_index],
+                                                 roi_two[best_index])
+                diss_diag_down = calcDissimilarity(imgrey, x_diagonal_down, y_diagonal_down, roi_one[best_index],
+                                                   roi_two[best_index])
 
-                if max([dissimilarity_edge_struct,diss_diag_up,diss_diag_down]) == dissimilarity_edge_struct:
-                    dissimilarity_start_gen[x-1:x+2,y-1: y+2] += int(dissimilarity_edge_struct/3)
+                if max([dissimilarity_edge_struct, diss_diag_up, diss_diag_down]) == dissimilarity_edge_struct:
+                    dissimilarity_start_gen[x - 1:x + 2, y - 1: y + 2] += int(dissimilarity_edge_struct / 3)
             if 10 == best_index:
                 x_left = x - 1
                 y_left = y
                 x_right = x + 1
                 y_right = y
                 diss_left = calcDissimilarity(imgrey, x_left, y_left, roi_one[best_index],
-                                                 roi_two[best_index])
+                                              roi_two[best_index])
                 diss_right = calcDissimilarity(imgrey, x_right, y_right, roi_one[best_index],
-                                                   roi_two[best_index])
+                                               roi_two[best_index])
 
-
-                if max([dissimilarity_edge_struct,diss_left,diss_right]) == dissimilarity_edge_struct:
-                    dissimilarity_start_gen[x-1:x+2,y-1: y+2] += int(dissimilarity_edge_struct/3)
+                if max([dissimilarity_edge_struct, diss_left, diss_right]) == dissimilarity_edge_struct:
+                    dissimilarity_start_gen[x - 1:x + 2, y - 1: y + 2] += int(dissimilarity_edge_struct / 3)
             if 11 == best_index:
                 x_up = x - 1
                 y_up = y
                 x_down = x + 1
                 y_down = y
-                up_diss = calcDissimilarity(imgrey,x_up,y_up,roi_one[best_index],roi_two[best_index])
-                down_diss=calcDissimilarity(imgrey,x_down,y_down,roi_one[best_index],roi_two[best_index])
+                up_diss = calcDissimilarity(imgrey, x_up, y_up, roi_one[best_index], roi_two[best_index])
+                down_diss = calcDissimilarity(imgrey, x_down, y_down, roi_one[best_index], roi_two[best_index])
 
-                if max([dissimilarity_edge_struct,up_diss,down_diss]) == dissimilarity_edge_struct:
-                    dissimilarity_start_gen[x-1:x+2,y-1: y+2] += int(dissimilarity_edge_struct/3)
+                if max([dissimilarity_edge_struct, up_diss, down_diss]) == dissimilarity_edge_struct:
+                    dissimilarity_start_gen[x - 1:x + 2, y - 1: y + 2] += int(dissimilarity_edge_struct / 3)
 
     return dissimilarity_start_gen
 
 
-
 def truncate_to_one(inputImg):
     img = inputImg
-    img=img.astype(float)
+    img = img.astype(float)
     h = img.shape[0]
     w = img.shape[1]
-    for y in range(0, h ):
+    for y in range(0, h):
         for x in range(0, w):
-            img[y,x] = img[y,x] / 255.0
+            img[y, x] = img[y, x] / 255.0
 
     return img
 
 
 def createRandomChromosome(inputImg):
-    enhancedImg=inputImg
+    enhancedImg = inputImg.copy()
     h = enhancedImg.shape[0]
     w = enhancedImg.shape[1]
-    for y in range(0, h ):
+    for y in range(0, h):
         for x in range(0, w):
-            enhancedImg[y,x] = np.random.randint(0,2)*int(enhancedImg[y,x] + random.random())
+            enhancedImg[y, x] = np.random.randint(0, 2) * int(enhancedImg[y, x] + random.random())
 
     return enhancedImg
 
 
-
-def dissimilarity(edgeImage, pixelposition,diss):
-    if(edgeImage[pixelposition[0],pixelposition[1]] == 1):
+def dissimilarity(edgeImage, pixelposition, diss):
+    if (edgeImage[pixelposition[0], pixelposition[1]] == 1):
         return 0
     else:
-        return diss[pixelposition[0],pixelposition[1]]
+        return diss[pixelposition[0], pixelposition[1]]
 
 
 def curvature(edgeImage, pixelposition):
-    pixelsite = edgeImage[pixelposition[1]-1:pixelposition[1]+2:,pixelposition[0]-1:pixelposition[0]+2:]
-
-    if pixelsite[0,0] ==1 and pixelsite[1,1]==1 and pixelsite[2,2] ==1 or  pixelsite[0,2] ==1 and pixelsite[1,1]==1 and pixelsite[2,] ==1:
-        return 0.5
-
-        pass
+    pixelsite = edgeImage[pixelposition[1] - 1:pixelposition[1] + 2:, pixelposition[0] - 1:pixelposition[0] + 2:]
+    if pixelsite[1, 1] == 1:
+        neighbourCounter = 0
+        for y in range(0, 3):
+            for x in range(0, 3):
+                if y == 1 and x == 1:
+                    continue
+                else:
+                    if pixelsite[y, x] == 1:
+                        neighbourCounter += 1
+        if neighbourCounter > 1:
+            angle = 0
+            for y in range(0, 3):
+                for x in range(0, 3):
+                    if y == 1 and x == 1:
+                        continue
+                    else:
+                        if pixelsite[y, x] == 1:
+                            a = math.atan2(y - 1, x - 1)
+                            if a > angle:
+                                angle = a
+            if angle == 0:
+                return 0
+            if angle == 45:
+                return 0.5
+            if angle >= 90:
+                return 1
+    return 1
 
 
 def fragmentation(edgeImage, pixelposition):
-    pixelsite = edgeImage[pixelposition[1]-1:pixelposition[1]+2:,pixelposition[0]-1:pixelposition[0]+2:]
-    if pixelsite[1,1] ==1:
-        neighbourCounter=0
-        for y in range(0,3):
-            for x in range(0,3):
-                if y ==1 and x ==1:
+    pixelsite = edgeImage[pixelposition[1] - 1:pixelposition[1] + 2:, pixelposition[0] - 1:pixelposition[0] + 2:]
+    if pixelsite[1, 1] == 1:
+        neighbourCounter = 0
+        for y in range(0, 3):
+            for x in range(0, 3):
+                if y == 1 and x == 1:
                     continue
                 else:
-                    if pixelsite[y,x] == 1:
-                        neighbourCounter+=1
+                    if pixelsite[y, x] == 1:
+                        neighbourCounter += 1
 
-        if neighbourCounter==0:
+        if neighbourCounter == 0:
             return 1
-        if neighbourCounter==1:
+        if neighbourCounter == 1:
             return 0.5
-        if neighbourCounter >1:
+        if neighbourCounter > 1:
             return 0
     else:
         return 0
@@ -210,77 +239,147 @@ def fragmentation(edgeImage, pixelposition):
     pass
 
 
-
-def numberofEdgePixels(edgeImage,pixelposition):
-    pixelsite = edgeImage[pixelposition[1]-1:pixelposition[1]+2:,pixelposition[0]-1:pixelposition[0]+2:]
+def numberofEdgePixels(edgeImage, pixelposition):
+    pixelsite = edgeImage[pixelposition[1] - 1:pixelposition[1] + 2:, pixelposition[0] - 1:pixelposition[0] + 2:]
     edgePixelCounter = 0
-    for y in range(0,3):
-        for x in range(0,3):
-            if edgePixelCounter ==2:
+    for y in range(0, 3):
+        for x in range(0, 3):
+            if edgePixelCounter == 2:
                 return 0
-            if pixelsite[y,x] == 1:
-                edgePixelCounter +=1
+            if pixelsite[y, x] == 1:
+                edgePixelCounter += 1
 
     if edgePixelCounter == 1:
         return 1
-    else :
+    else:
         return 1
+
 
 def thickness(edgeImage, pixelposition):
     pixelsite = edgeImage[pixelposition[1] - 1:pixelposition[1] + 2:, pixelposition[0] - 1:pixelposition[0] + 2:]
-    if pixelsite[1,1] == 1:
-        for y in range(0,3):
-            for x in range(0,3):
+    if pixelsite[1, 1] == 1:
+        for y in range(0, 3):
+            for x in range(0, 3):
                 grad = 0
-                if x ==1 and y==1:
+                if x == 1 and y == 1:
                     continue
 
-                if pixelsite[y,x] == 1 :
-                    if x <2 and y <2:
-                        if pixelsite[y+1,x+1] ==1:
-                            grad+=1
-                        if  pixelsite[y,x+1] ==1:
+                if pixelsite[y, x] == 1:
+                    if x < 2 and y < 2:
+                        if pixelsite[y + 1, x + 1] == 1:
                             grad += 1
-                        if  pixelsite[y+1,x] ==1:
+                        if pixelsite[y, x + 1] == 1:
                             grad += 1
-                    if x ==2 and y <2:
-                        if pixelsite[y,x-1] ==1:
-                            grad+=1
-                        if  pixelsite[y+1,x-1] ==1:
+                        if pixelsite[y + 1, x] == 1:
                             grad += 1
-                        if  pixelsite[y+1,x] ==1:
+                    if x == 2 and y < 2:
+                        if pixelsite[y, x - 1] == 1:
                             grad += 1
-                    if y ==2 and x <2:
-                        if pixelsite[y-1,x] ==1:
-                            grad+=1
-                        if  pixelsite[y-1,x+1] ==1:
+                        if pixelsite[y + 1, x - 1] == 1:
                             grad += 1
-                        if  pixelsite[y,x+1] ==1:
+                        if pixelsite[y + 1, x] == 1:
                             grad += 1
-                    if y ==2 and x ==2:
-                        if pixelsite[y-1,x] ==1:
-                            grad+=1
-                        if  pixelsite[y-1,x-1] ==1:
+                    if y == 2 and x < 2:
+                        if pixelsite[y - 1, x] == 1:
                             grad += 1
-                        if  pixelsite[y,x-1] ==1:
+                        if pixelsite[y - 1, x + 1] == 1:
+                            grad += 1
+                        if pixelsite[y, x + 1] == 1:
+                            grad += 1
+                    if y == 2 and x == 2:
+                        if pixelsite[y - 1, x] == 1:
+                            grad += 1
+                        if pixelsite[y - 1, x - 1] == 1:
+                            grad += 1
+                        if pixelsite[y, x - 1] == 1:
                             grad += 1
                 if grad > 1:
                     return 1
         return 0
     return 1
 
-
-
-def edgecostminimization(edgeConfiguration, w_c, w_d, w_e, w_f, w_t):
-    fitness = w_c * curvature(edgeConfiguration) + w_d * dissimilarity(edgeConfiguration) + w_e * numberofEdgePixels(edgeConfiguration) + w_f * fragmentation(edgeConfiguration) + w_t * thickness(edgeConfiguration)
+def edgecostminimization(edgeConfiguration, enhanced, w_c=25, w_d=2.0, w_e=1.0, w_f=2.0, w_t=4.76):
+    h = edgeConfiguration.shape[0]
+    w = edgeConfiguration.shape[1]
+    fitness = 0
+    for y in range(2, h - 2):
+        for x in range(2, w - 2):
+            fitness += w_c * curvature(edgeConfiguration, (y, x)) + w_d * dissimilarity(edgeConfiguration, (y, x),
+                                                                                        enhanced) + w_e * numberofEdgePixels(
+                edgeConfiguration, (y, x)) + w_f * fragmentation(edgeConfiguration, (y, x)) + w_t * thickness(
+                edgeConfiguration, (y, x))
     return fitness
 
-if __name__ == '__main__':
 
+def crossover(ParentA, ParentB):
+    kidC = np.empty(ParentA.shape)
+    kidD = np.empty(ParentA.shape)
+    crossoverpoint = random.randint(0, len(ParentA))
+    for i in range(0, crossoverpoint):
+        kidC[i] = ParentA[i]
+        kidD[i] = ParentB[i]
+    for j in range(crossoverpoint, len(ParentA)):
+        kidC[j] = ParentB[j]
+        kidD[j] = ParentA[j]
+
+    return kidC, kidD
+
+
+def img2chromosome(img_arr):
+    chromosome = np.reshape(a=img_arr, newshape=(functools.reduce(operator.mul, img_arr.shape)))
+
+    return chromosome
+
+
+def chromosome2img(chromosome, img_shape):
+    img_arr = np.reshape(a=chromosome, newshape=img_shape)
+
+    return img_arr
+
+def mutiere(a):
+    a=a.copy()
+    index = random.randint(0, (len(a)-1))
+    if a[index] == 0:
+        a[index] = 1
+    elif a[index] == 1:
+        a[index] = 0
+    return a
+
+
+def binmutiere(x):
+    x= x.copy()
+    probMut = 1.0 / (len(x))
+    for i in range(0, len(x)):
+        u = random.uniform(0.0, 1.0)
+        if u <= probMut:
+            if x[i] == 0:
+                x[i] = 1
+            elif x[i] == 1:
+                x[i] = 0
+    return x
+
+
+
+
+def hillclimbing(bewertungsfunc,enhanced,erzeugeKandidat,maxGen):
+    a = erzeugeKandidat
+    genCounter = 0
+    while genCounter < maxGen:
+        b = binmutiere(img2chromosome(a))
+        b=chromosome2img(b,a.shape)
+        bewertunga = bewertungsfunc(a,enhanced=enhanced)
+        bewertungB = bewertungsfunc(b,enhanced=enhanced)
+        if bewertungB >= bewertunga:
+            a = b
+        genCounter+=1
+    return a
+
+if __name__ == '__main__':
     image = cv2.imread("cat.jpeg")
+    cv2.imshow("aa", image)
     image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     # own try to make it from paper, comes out, that sobel is better :(
-    # enhancedImage= generateEdgeEnhanced(image)
+    #ab= generateEdgeEnhanced(image)
 
     # generation of enhanced image
     scale = 1
@@ -296,11 +395,14 @@ if __name__ == '__main__':
 
     grad = cv2.addWeighted(abs_grad_x, 0.5, abs_grad_y, 0.5, 0)
 
-######################################################################################
+    ######################################################################################
 
+    enhancedImage = truncate_to_one(grad)
 
-    enhancedImage =truncate_to_one(grad)
     init_gen = createRandomChromosome(enhancedImage)
-    cv2.imshow("sossbel", init_gen)
+    optim= hillclimbing(edgecostminimization,enhancedImage,createRandomChromosome(enhancedImage),100)
+
+    print(optim)
+    cv2.imshow("Opt Hillclimb", optim)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
