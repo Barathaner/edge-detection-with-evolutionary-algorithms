@@ -359,27 +359,118 @@ def binmutiere(x):
     return x
 
 
+def singlePixelChange(x):
+    x= x.copy()
+    randsite = random.randint(0,len(x))
+    if x[randsite] ==1:
+        x[randsite] =0
+    else:
+        x[randsite] = 1
+    return x
 
+def doublePixelChange(x):
+    x= x.copy()
+    randsite = random.randint(0,len(x))
+    if x[randsite] ==1:
+        x[randsite] =0
+        if x[randsite+1] == 1:
+            x[randsite+1] = 0
+        else:
+            x[randsite+1] = 1
+    else:
+        x[randsite] = 1
+
+        if x[randsite+1] == 1:
+            x[randsite+1] = 0
+        else:
+            x[randsite+1] = 1
+    return x
+
+def initial_population(img_shape,enhanced, n_individuals=8):
+    init_population = np.empty(shape=(n_individuals,
+                                         functools.reduce(operator.mul, img_shape)),
+                                  dtype=np.uint8)
+
+    for indv_num in range(n_individuals):
+        # Randomly generating initial population chromosomes genes values.
+        init_population[indv_num, :] = createRandomChromosome(enhanced)
+
+    return init_population
 
 def hillclimbing(bewertungsfunc,enhanced,erzeugeKandidat,maxGen):
     a = erzeugeKandidat
     genCounter = 0
     while genCounter < maxGen:
-        b = binmutiere(img2chromosome(a))
-        b=chromosome2img(b,a.shape)
         bewertunga = bewertungsfunc(a,enhanced=enhanced)
+        b = doublePixelChange(img2chromosome(a))
+        b=chromosome2img(b,a.shape)
         bewertungB = bewertungsfunc(b,enhanced=enhanced)
-        if bewertungB >= bewertunga:
+        if bewertungB < bewertunga:
             a = b
+            print(bewertungB)
         genCounter+=1
     return a
 
-if __name__ == '__main__':
-    image = cv2.imread("cat.jpeg")
-    cv2.imshow("aa", image)
-    image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    # own try to make it from paper, comes out, that sobel is better :(
-    #ab= generateEdgeEnhanced(image)
+
+def cal_pop_fitness(target_chrom, pop,fitness_fun):
+    qualities = np.zeros(pop.shape[0])
+    for indv_num in range(pop.shape[0]):
+        qualities[indv_num] = fitness_fun(target_chrom, pop[indv_num, :])
+
+    return qualities
+
+
+
+def decisionTreeCostFunction(edgeImage,pixelsite,enhanced,w_c=25, w_d=2.0, w_e=1.0, w_f=2.0, w_t=4.76):
+    costCurvature=1
+    costFragment=1
+    costNumberEdges=1
+    costThickness=1
+    costDiss=1
+    if edgeImage[pixelsite[1],pixelsite[0]] == 0:
+        costDiss = enhanced[pixelsite[1],pixelsite[0]]
+        costCurvature = 0
+        costFragment = 0
+        costNumberEdges = 0
+        costThickness = 0
+    else:
+        costDiss = 0
+        costNumberEdges = 1
+        pixelwindow = edgeImage[pixelsite[1] - 1:pixelsite[1] + 2:, pixelsite[0] - 1:pixelsite[0] + 2:]
+        edgePixelCounter = 0
+        for y in range(0, 3):
+            for x in range(0, 3):
+                if pixelwindow[y, x] == 1:
+                    edgePixelCounter += 1
+        if edgePixelCounter ==0:
+            costCurvature = 0
+            costFragment = 1
+            costThickness = 0
+        if edgePixelCounter ==1:
+            costCurvature = 0
+            costFragment = 0.5
+            costThickness = 0
+        if edgePixelCounter ==2:
+            costFragment = 0
+            if thickness(edgeImage,pixelsite)==1:
+                costThickness = 1
+                costCurvature = 1
+            else:
+                costThickness = 0
+                costCurvature = curvature(edgeImage,pixelsite)
+    return w_c*costCurvature+w_d*costDiss+w_e*costNumberEdges+w_f*costFragment+w_t*costThickness
+
+def decisionTreeCostWholeImage(edgeConfiguration, enhanced):
+    h = edgeConfiguration.shape[0]
+    w = edgeConfiguration.shape[1]
+    fitness = 0
+    for y in range(2, h - 2):
+        for x in range(2, w - 2):
+            fitness += decisionTreeCostFunction(edgeConfiguration,[y,x],enhanced)
+    return fitness
+
+
+def generateEnhancedSobelImage(image):
 
     # generation of enhanced image
     scale = 1
@@ -395,14 +486,33 @@ if __name__ == '__main__':
 
     grad = cv2.addWeighted(abs_grad_x, 0.5, abs_grad_y, 0.5, 0)
 
-    ######################################################################################
+    return grad
 
-    enhancedImage = truncate_to_one(grad)
+# eventuell austesten ob was bringt???
+def convert_gray(binary):
+  binary = int(binary, 2)
+  binary ^= (binary >> 1)
+  return bin(binary)[2:]
+
+
+def graytob(n):
+    n = int(n, 2)  # convert to int
+
+    mask = n
+    while mask != 0:
+        mask >>= 1
+        n ^= mask
+
+    return bin(n)[2:]
+
+if __name__ == '__main__':
+    image = cv2.imread("cat.jpeg")
+    image = cv2.GaussianBlur(image,(5,5),5)
+    image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    enhancedImage = truncate_to_one(generateEnhancedSobelImage(image))
 
     init_gen = createRandomChromosome(enhancedImage)
-    optim= hillclimbing(edgecostminimization,enhancedImage,createRandomChromosome(enhancedImage),100)
-
-    print(optim)
-    cv2.imshow("Opt Hillclimb", optim)
+    optim= hillclimbing(decisionTreeCostWholeImage,enhancedImage,createRandomChromosome(enhancedImage),200)
+    cv2.imshow("init",init_gen)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
