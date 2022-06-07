@@ -1,11 +1,9 @@
-import functools
 import math
-import operator
-
 import cv2
 import numpy as np
 import random
-
+from numba import jit, njit, types, vectorize
+from concurrent.futures import ThreadPoolExecutor
 # basis edge structure two neighbouring set
 e_s1 = np.array([[0, 0, 0], [255, 255, 0], [0, 0, 255]], dtype='uint8')
 e_s2 = np.array([[0, 0, 255], [0, 255, 0], [0, 255, 0]], dtype='uint8')
@@ -184,6 +182,7 @@ def dissimilarity(edgeImage, pixelposition, diss):
         return diss[pixelposition[0], pixelposition[1]]
 
 
+@njit(nogil=True)
 def curvature(edgeImage, pixelposition):
     pixelsite = edgeImage[pixelposition[1] - 1:pixelposition[1] + 2:, pixelposition[0] - 1:pixelposition[0] + 2:]
     if pixelsite[1, 1] == 1:
@@ -255,6 +254,7 @@ def numberofEdgePixels(edgeImage, pixelposition):
         return 1
 
 
+@njit(nogil=True)
 def thickness(edgeImage, pixelposition):
     pixelsite = edgeImage[pixelposition[1] - 1:pixelposition[1] + 2:, pixelposition[0] - 1:pixelposition[0] + 2:]
     if pixelsite[1, 1] == 1:
@@ -325,14 +325,16 @@ def crossover(ParentA, ParentB):
     return kidC, kidD
 
 
+@njit(nogil=True)
 def img2chromosome(img_arr):
-    chromosome = np.reshape(a=img_arr, newshape=(functools.reduce(operator.mul, img_arr.shape)))
+    chromosome = img_arr.flatten()
 
     return chromosome
 
 
+@njit(nogil=True)
 def chromosome2img(chromosome, img_shape):
-    img_arr = np.reshape(a=chromosome, newshape=img_shape)
+    img_arr = np.reshape(chromosome,img_shape)
 
     return img_arr
 
@@ -368,6 +370,7 @@ def singlePixelChange(x):
         x[randsite] = 1
     return x
 
+@njit(nogil=True)
 def doublePixelChange(x):
     x= x.copy()
     randsite = random.randint(0,len(x))
@@ -397,6 +400,7 @@ def initial_population(img_shape,enhanced, n_individuals=8):
 
     return init_population
 
+@njit(nogil=True)
 def hillclimbing(bewertungsfunc,enhanced,erzeugeKandidat,maxGen):
     a = erzeugeKandidat
     genCounter = 0
@@ -421,6 +425,7 @@ def cal_pop_fitness(target_chrom, pop,fitness_fun):
 
 
 
+@njit(nogil=True)
 def decisionTreeCostFunction(edgeImage,pixelsite,enhanced,w_c=25, w_d=2.0, w_e=1.0, w_f=2.0, w_t=4.76):
     costCurvature=1
     costFragment=1
@@ -460,13 +465,14 @@ def decisionTreeCostFunction(edgeImage,pixelsite,enhanced,w_c=25, w_d=2.0, w_e=1
                 costCurvature = curvature(edgeImage,pixelsite)
     return w_c*costCurvature+w_d*costDiss+w_e*costNumberEdges+w_f*costFragment+w_t*costThickness
 
+@njit(nogil=True)
 def decisionTreeCostWholeImage(edgeConfiguration, enhanced):
     h = edgeConfiguration.shape[0]
     w = edgeConfiguration.shape[1]
     fitness = 0
     for y in range(2, h - 2):
         for x in range(2, w - 2):
-            fitness += decisionTreeCostFunction(edgeConfiguration,[y,x],enhanced)
+            fitness = fitness + decisionTreeCostFunction(edgeConfiguration,[y,x],enhanced)
     return fitness
 
 
@@ -512,7 +518,11 @@ if __name__ == '__main__':
     enhancedImage = truncate_to_one(generateEnhancedSobelImage(image))
 
     init_gen = createRandomChromosome(enhancedImage)
-    optim= hillclimbing(decisionTreeCostWholeImage,enhancedImage,createRandomChromosome(enhancedImage),200)
+    with ThreadPoolExecutor(8) as ex:
+        ex.map(hillclimbing, np.arange(0, 1000, 0.1))
+    optim= hillclimbing(decisionTreeCostWholeImage,enhancedImage,init_gen,100)
     cv2.imshow("init",init_gen)
+    cv2.imshow("init", optim)
+    print("finish")
     cv2.waitKey(0)
     cv2.destroyAllWindows()
