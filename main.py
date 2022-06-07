@@ -2,8 +2,7 @@ import math
 import cv2
 import numpy as np
 import random
-from numba import jit, njit, types, vectorize
-from concurrent.futures import ThreadPoolExecutor
+from numba import jit, njit, types, vectorize,prange
 # basis edge structure two neighbouring set
 e_s1 = np.array([[0, 0, 0], [255, 255, 0], [0, 0, 255]], dtype='uint8')
 e_s2 = np.array([[0, 0, 255], [0, 255, 0], [0, 255, 0]], dtype='uint8')
@@ -465,13 +464,13 @@ def decisionTreeCostFunction(edgeImage,pixelsite,enhanced,w_c=25, w_d=2.0, w_e=1
                 costCurvature = curvature(edgeImage,pixelsite)
     return w_c*costCurvature+w_d*costDiss+w_e*costNumberEdges+w_f*costFragment+w_t*costThickness
 
-@njit(nogil=True)
+@njit(nogil=True, parallel=True)
 def decisionTreeCostWholeImage(edgeConfiguration, enhanced):
     h = edgeConfiguration.shape[0]
     w = edgeConfiguration.shape[1]
     fitness = 0
-    for y in range(2, h - 2):
-        for x in range(2, w - 2):
+    for y in prange(2,int(h-2)):
+        for x in prange(2,int(w-2)):
             fitness = fitness + decisionTreeCostFunction(edgeConfiguration,[y,x],enhanced)
     return fitness
 
@@ -518,9 +517,7 @@ if __name__ == '__main__':
     enhancedImage = truncate_to_one(generateEnhancedSobelImage(image))
 
     init_gen = createRandomChromosome(enhancedImage)
-    with ThreadPoolExecutor(8) as ex:
-        ex.map(hillclimbing, np.arange(0, 1000, 0.1))
-    optim= hillclimbing(decisionTreeCostWholeImage,enhancedImage,init_gen,100)
+    optim= hillclimbing(decisionTreeCostWholeImage,enhancedImage,init_gen,20000)
     cv2.imshow("init",init_gen)
     cv2.imshow("init", optim)
     print("finish")
