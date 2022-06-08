@@ -402,7 +402,7 @@ def hillclimbing(bewertungsfunc,enhanced,erzeugeKandidat,maxGen):
         bewertungB = bewertungsfunc(b,enhanced=enhanced)
         if bewertungB < bewertunga:
             a = b
-            print(bewertungB)
+            print("gen: ", genCounter, "cost: ",bewertungB)
         genCounter+=1
     return a
 
