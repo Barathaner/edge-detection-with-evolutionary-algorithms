@@ -169,7 +169,7 @@ def createRandomChromosome(inputImg):
     w = enhancedImg.shape[1]
     for y in range(0, h):
         for x in range(0, w):
-            enhancedImg[y, x] = np.random.randint(0, 2) * int(enhancedImg[y, x] + random.random())
+            enhancedImg[y, x] = np.random.randint(0, 2)
 
     return enhancedImg
 
@@ -375,17 +375,9 @@ def doublePixelChange(x):
     randsite = random.randint(0,len(x))
     if x[randsite] ==1:
         x[randsite] =0
-        if x[randsite+1] == 1:
-            x[randsite+1] = 0
-        else:
-            x[randsite+1] = 1
     else:
         x[randsite] = 1
 
-        if x[randsite+1] == 1:
-            x[randsite+1] = 0
-        else:
-            x[randsite+1] = 1
     return x
 
 def initial_population(img_shape,enhanced, n_individuals=8):
@@ -425,7 +417,7 @@ def cal_pop_fitness(target_chrom, pop,fitness_fun):
 
 
 @njit(nogil=True)
-def decisionTreeCostFunction(edgeImage,pixelsite,enhanced,w_c=25, w_d=2.0, w_e=1.0, w_f=2.0, w_t=4.76):
+def decisionTreeCostFunction(edgeImage,pixelsite,enhanced,w_c=0.25, w_d=2.0, w_e=1.0, w_f=2.0, w_t=4.76):
     costCurvature=1
     costFragment=1
     costNumberEdges=1
@@ -469,8 +461,8 @@ def decisionTreeCostWholeImage(edgeConfiguration, enhanced):
     h = edgeConfiguration.shape[0]
     w = edgeConfiguration.shape[1]
     fitness = 0
-    for y in prange(2,int(h-2)):
-        for x in prange(2,int(w-2)):
+    for y in prange(0,int(h)):
+        for x in prange(0,int(w)):
             fitness = fitness + decisionTreeCostFunction(edgeConfiguration,[y,x],enhanced)
     return fitness
 
@@ -511,15 +503,14 @@ def graytob(n):
     return bin(n)[2:]
 
 if __name__ == '__main__':
-    image = cv2.imread("cat.jpeg")
-    image = cv2.GaussianBlur(image,(5,5),5)
+    image = cv2.imread("kreis.png")
     image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     enhancedImage = truncate_to_one(generateEnhancedSobelImage(image))
 
     init_gen = createRandomChromosome(enhancedImage)
     optim= hillclimbing(decisionTreeCostWholeImage,enhancedImage,init_gen,20000)
     cv2.imshow("init",init_gen)
-    cv2.imshow("init", optim)
+    cv2.imshow("op", optim)
     print("finish")
     cv2.waitKey(0)
     cv2.destroyAllWindows()
