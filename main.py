@@ -169,88 +169,31 @@ def createRandomChromosome(inputImg):
     w = enhancedImg.shape[1]
     for y in range(0, h):
         for x in range(0, w):
-            enhancedImg[y, x] = np.random.randint(0, 2)
+            enhancedImg[y, x] = np.random.randint(0, 2) * int(enhancedImg[y, x] + random.random())
 
     return enhancedImg
 
-
-def dissimilarity(edgeImage, pixelposition, diss):
-    if (edgeImage[pixelposition[0], pixelposition[1]] == 1):
-        return 0
-    else:
-        return diss[pixelposition[0], pixelposition[1]]
 
 
 @njit(nogil=True)
 def curvature(edgeImage, pixelposition):
     pixelsite = edgeImage[pixelposition[1] - 1:pixelposition[1] + 2:, pixelposition[0] - 1:pixelposition[0] + 2:]
-    if pixelsite[1, 1] == 1:
-        neighbourCounter = 0
-        for y in range(0, 3):
-            for x in range(0, 3):
-                if y == 1 and x == 1:
-                    continue
-                else:
-                    if pixelsite[y, x] == 1:
-                        neighbourCounter += 1
-        if neighbourCounter > 1:
-            angle = 0
-            for y in range(0, 3):
-                for x in range(0, 3):
-                    if y == 1 and x == 1:
-                        continue
-                    else:
-                        if pixelsite[y, x] == 1:
-                            a = math.atan2(y - 1, x - 1)
-                            if a > angle:
-                                angle = a
-            if angle == 0:
-                return 0
-            if angle == 45:
-                return 0.5
-            if angle >= 90:
-                return 1
-    return 1
-
-
-def fragmentation(edgeImage, pixelposition):
-    pixelsite = edgeImage[pixelposition[1] - 1:pixelposition[1] + 2:, pixelposition[0] - 1:pixelposition[0] + 2:]
-    if pixelsite[1, 1] == 1:
-        neighbourCounter = 0
-        for y in range(0, 3):
-            for x in range(0, 3):
-                if y == 1 and x == 1:
-                    continue
-                else:
-                    if pixelsite[y, x] == 1:
-                        neighbourCounter += 1
-
-        if neighbourCounter == 0:
-            return 1
-        if neighbourCounter == 1:
-            return 0.5
-        if neighbourCounter > 1:
-            return 0
-    else:
-        return 0
-
-    pass
-
-
-def numberofEdgePixels(edgeImage, pixelposition):
-    pixelsite = edgeImage[pixelposition[1] - 1:pixelposition[1] + 2:, pixelposition[0] - 1:pixelposition[0] + 2:]
-    edgePixelCounter = 0
+    angle = 0
     for y in range(0, 3):
         for x in range(0, 3):
-            if edgePixelCounter == 2:
-                return 0
-            if pixelsite[y, x] == 1:
-                edgePixelCounter += 1
-
-    if edgePixelCounter == 1:
-        return 1
-    else:
-        return 1
+            if y == 1 and x == 1:
+                continue
+            else:
+                if pixelsite[y, x] == 1:
+                    a = (math.atan2( 1 - y, 1 - x ) * ( 180 / math.pi ) + 360) % 360
+                    b = (math.atan2( y - 1, x - 1 ) * ( 180 / math.pi )+ 360 )% 360
+                    if a<b:
+                        if a == 45 or a==135:
+                            return 1
+                    else:
+                        if b ==45 or b==135:
+                            return 1
+    return 0
 
 
 @njit(nogil=True)
@@ -292,22 +235,11 @@ def thickness(edgeImage, pixelposition):
                             grad += 1
                         if pixelsite[y, x - 1] == 1:
                             grad += 1
-                if grad > 1:
+                if grad > 3:
                     return 1
         return 0
-    return 1
-
-def edgecostminimization(edgeConfiguration, enhanced, w_c=25, w_d=2.0, w_e=1.0, w_f=2.0, w_t=4.76):
-    h = edgeConfiguration.shape[0]
-    w = edgeConfiguration.shape[1]
-    fitness = 0
-    for y in range(2, h - 2):
-        for x in range(2, w - 2):
-            fitness += w_c * curvature(edgeConfiguration, (y, x)) + w_d * dissimilarity(edgeConfiguration, (y, x),
-                                                                                        enhanced) + w_e * numberofEdgePixels(
-                edgeConfiguration, (y, x)) + w_f * fragmentation(edgeConfiguration, (y, x)) + w_t * thickness(
-                edgeConfiguration, (y, x))
-    return fitness
+    else:
+        return 0
 
 
 def crossover(ParentA, ParentB):
@@ -337,87 +269,38 @@ def chromosome2img(chromosome, img_shape):
 
     return img_arr
 
-def mutiere(a):
-    a=a.copy()
-    index = random.randint(0, (len(a)-1))
-    if a[index] == 0:
-        a[index] = 1
-    elif a[index] == 1:
-        a[index] = 0
-    return a
-
-
-def binmutiere(x):
-    x= x.copy()
-    probMut = 1.0 / (len(x))
-    for i in range(0, len(x)):
-        u = random.uniform(0.0, 1.0)
-        if u <= probMut:
-            if x[i] == 0:
-                x[i] = 1
-            elif x[i] == 1:
-                x[i] = 0
-    return x
-
-
-def singlePixelChange(x):
-    x= x.copy()
-    randsite = random.randint(0,len(x))
-    if x[randsite] ==1:
-        x[randsite] =0
-    else:
-        x[randsite] = 1
-    return x
 
 @njit(nogil=True)
 def doublePixelChange(x):
-    x= x.copy()
-    randsite = random.randint(0,len(x))
-    if x[randsite] ==1:
-        x[randsite] =0
+    n= x.copy()
+    randsite = random.randint(0,len(n))
+    if n[randsite] ==1:
+        n[randsite] =0
     else:
-        x[randsite] = 1
+        n[randsite] = 1
 
-    return x
+    return n
 
-def initial_population(img_shape,enhanced, n_individuals=8):
-    init_population = np.empty(shape=(n_individuals,
-                                         functools.reduce(operator.mul, img_shape)),
-                                  dtype=np.uint8)
 
-    for indv_num in range(n_individuals):
-        # Randomly generating initial population chromosomes genes values.
-        init_population[indv_num, :] = createRandomChromosome(enhanced)
 
-    return init_population
-
-@njit(nogil=True)
 def hillclimbing(bewertungsfunc,enhanced,erzeugeKandidat,maxGen):
     a = erzeugeKandidat
     genCounter = 0
     while genCounter < maxGen:
-        bewertunga = bewertungsfunc(a,enhanced=enhanced)
-        b = doublePixelChange(img2chromosome(a))
+        b=doublePixelChange(img2chromosome(a))
         b=chromosome2img(b,a.shape)
-        bewertungB = bewertungsfunc(b,enhanced=enhanced)
+        bewertunga = bewertungsfunc(a,enhanced)
+        bewertungB = bewertungsfunc(b,enhanced)
         if bewertungB < bewertunga:
             a = b
             print("gen: ", genCounter, "cost: ",bewertungB)
+            cv2.imshow("cu",b)
+            cv2.waitKey(2)
         genCounter+=1
     return a
 
-
-def cal_pop_fitness(target_chrom, pop,fitness_fun):
-    qualities = np.zeros(pop.shape[0])
-    for indv_num in range(pop.shape[0]):
-        qualities[indv_num] = fitness_fun(target_chrom, pop[indv_num, :])
-
-    return qualities
-
-
-
 @njit(nogil=True)
-def decisionTreeCostFunction(edgeImage,pixelsite,enhanced,w_c=0.25, w_d=2.0, w_e=1.0, w_f=2.0, w_t=4.76):
+def decisionTreeCostFunction(edgeImage,pixelsite,enhanced,w_c=0.25, w_d=5, w_e=0, w_f=3, w_t=6):
     costCurvature=1
     costFragment=1
     costNumberEdges=1
@@ -436,6 +319,8 @@ def decisionTreeCostFunction(edgeImage,pixelsite,enhanced,w_c=0.25, w_d=2.0, w_e
         edgePixelCounter = 0
         for y in range(0, 3):
             for x in range(0, 3):
+                if y==1 and x==1:
+                    continue
                 if pixelwindow[y, x] == 1:
                     edgePixelCounter += 1
         if edgePixelCounter ==0:
@@ -446,17 +331,18 @@ def decisionTreeCostFunction(edgeImage,pixelsite,enhanced,w_c=0.25, w_d=2.0, w_e
             costCurvature = 0
             costFragment = 0.5
             costThickness = 0
-        if edgePixelCounter ==2:
-            costFragment = 0
+        if edgePixelCounter >=2:
             if thickness(edgeImage,pixelsite)==1:
                 costThickness = 1
                 costCurvature = 1
+                costFragment = 0
             else:
                 costThickness = 0
+                costFragment = 0.5
                 costCurvature = curvature(edgeImage,pixelsite)
     return w_c*costCurvature+w_d*costDiss+w_e*costNumberEdges+w_f*costFragment+w_t*costThickness
 
-@njit(nogil=True, parallel=True)
+@njit(nogil=True,parallel=True)
 def decisionTreeCostWholeImage(edgeConfiguration, enhanced):
     h = edgeConfiguration.shape[0]
     w = edgeConfiguration.shape[1]
@@ -465,7 +351,6 @@ def decisionTreeCostWholeImage(edgeConfiguration, enhanced):
         for x in prange(0,int(w)):
             fitness = fitness + decisionTreeCostFunction(edgeConfiguration,[y,x],enhanced)
     return fitness
-
 
 def generateEnhancedSobelImage(image):
 
@@ -485,32 +370,18 @@ def generateEnhancedSobelImage(image):
 
     return grad
 
-# eventuell austesten ob was bringt???
-def convert_gray(binary):
-  binary = int(binary, 2)
-  binary ^= (binary >> 1)
-  return bin(binary)[2:]
-
-
-def graytob(n):
-    n = int(n, 2)  # convert to int
-
-    mask = n
-    while mask != 0:
-        mask >>= 1
-        n ^= mask
-
-    return bin(n)[2:]
-
 if __name__ == '__main__':
-    image = cv2.imread("kreis.png")
+    image = cv2.imread("dog.jpg")
     image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     enhancedImage = truncate_to_one(generateEnhancedSobelImage(image))
+    cv2.imwrite("asd.png",enhancedImage*255)
 
     init_gen = createRandomChromosome(enhancedImage)
     optim= hillclimbing(decisionTreeCostWholeImage,enhancedImage,init_gen,20000)
     cv2.imshow("init",init_gen)
     cv2.imshow("op", optim)
+    cv2.imwrite("op.png", optim*255)
     print("finish")
     cv2.waitKey(0)
     cv2.destroyAllWindows()
+
