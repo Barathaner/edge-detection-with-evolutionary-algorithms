@@ -300,7 +300,7 @@ def hillclimbing(bewertungsfunc,enhanced,erzeugeKandidat,maxGen):
     return a
 
 @njit(nogil=True)
-def decisionTreeCostFunction(edgeImage,pixelsite,enhanced,w_c=0.25, w_d=5, w_e=0, w_f=3, w_t=6):
+def decisionTreeCostFunction(edgeImage,pixelsite,enhanced,w_c=0.25, w_d=4, w_e=0.25, w_f=3, w_t=6):
     costCurvature=1
     costFragment=1
     costNumberEdges=1
