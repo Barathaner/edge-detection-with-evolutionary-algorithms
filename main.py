@@ -6,7 +6,7 @@ import numba as nb
 
 
 
-popsize=50
+popsize=64
 # basis edge structure two neighbouring set
 e_s1 = np.array([[0, 0, 0], [255, 255, 0], [0, 0, 255]], dtype='uint8')
 e_s2 = np.array([[0, 0, 255], [0, 255, 0], [0, 255, 0]], dtype='uint8')
@@ -117,9 +117,10 @@ def acceptSimulatedAnnealing(parentGenFitness, kidGenFitness, temperature):
 
 
 def geneticAlgorithm(popfitnessfunc, createInitPop, stoppingCond, selectPop, crossover, mutate):
-    time = 0
+
     init_pop = createInitPop
     popfitness = popfitnessfunc(nb.typed.List(init_pop))
+    time = 0
     while stoppingCond(time) != True:
         selectedPop=selectPop(init_pop, popfitness)
         parentA = selectedPop[0]
@@ -131,23 +132,27 @@ def geneticAlgorithm(popfitnessfunc, createInitPop, stoppingCond, selectPop, cro
             kidA, kidB = crossover(parentA,parentB)
         else:
             kidA, kidB = parentA,parentB
-        kidA = mutate(kidA)
-        kidB = mutate(kidB)
         kidA = chromosome2img(kidA,init_pop[0].shape)
         kidB = chromosome2img(kidB,init_pop[0].shape)
+        kidA = mutate(kidA)
+        kidB = mutate(kidB)
         kidAfitness=decisionTreeCostWholeImage(kidA)
         kidBfitness=decisionTreeCostWholeImage(kidB)
-        del init_pop[popfitness.index(min(popfitness))]
-        popfitness.remove(min(popfitness))
-        del init_pop[popfitness.index(min(popfitness))]
-        popfitness.remove(min(popfitness))
+        del init_pop[popfitness.index(max(popfitness))]
+        popfitness.remove(max(popfitness))
+        del init_pop[popfitness.index(max(popfitness))]
+        popfitness.remove(max(popfitness))
         popfitness.append(kidAfitness)
-        popfitness.append(kidBfitness)
         init_pop.append(kidA)
+        popfitness.append(kidBfitness)
         init_pop.append(kidB)
         time += 1
+        init_pop_show = to_matrix(init_pop, int(np.sqrt(popsize)))
+        init_pop_show = stackImages(init_pop_show, 1)
+        cv2.imshow("stackedIm", init_pop_show)
+        cv2.waitKey(2)
         print(time)
-    return init_pop[np.argmax(popfitness)]
+    return init_pop[np.argmin(popfitness)]
 
 
 def tournamentselect(pop,popfitness, kIndividualamount=2, enemieamount=3):
@@ -166,13 +171,12 @@ def tournamentselect(pop,popfitness, kIndividualamount=2, enemieamount=3):
 
 
 def efficientbinarymut(individual):
-    next = 0
-    mutated = individual.copy()
 
-    mutated[next] = 1 - mutated[next]
+    mutated = individual.copy()
+    next = 0
     while next < len(individual):
-        nextGeneProb = random.random()
-        next = next + int(np.log2(nextGeneProb) / np.log2(1 - combprob))
+        mutated[next] = 1 - mutated[next]
+        next +=int(np.log2(random.random()) / np.log2(1 - combprob))
     return mutated
 
 
@@ -335,7 +339,7 @@ def createRandomChromosome(inputImg):
     w = enhancedImg.shape[1]
     for y in range(0, h):
         for x in range(0, w):
-            enhancedImg[y, x] = np.random.randint(0, 2) * int(enhancedImg[x,y]+random.random())
+            enhancedImg[y, x] = np.random.randint(0, 2) * int(enhancedImg[y,x]+random.random())
     return np.float32(enhancedImg)
 
 def createRandomPop(popsize,inputIm):
@@ -378,6 +382,16 @@ def edgestructureMutation(parent):
 
     return kid, [randsitey, randsitex]
 
+
+def aedgestructureMutation(parent):
+    kid = parent.copy()
+    randsitex = random.randint(1, kid.shape[1] - 2)
+    randsitey = random.randint(1, kid.shape[0] - 2)
+    randedgestructure = random.randint(0, len(edgestructs) - 1)
+    mutation = edgestructs[randedgestructure]
+    kid[randsitey - 1:randsitey + 2, randsitex - 1:randsitex + 2] = mutation
+
+    return kid
 
 ################################################################################################
 #####################################fitness-function###########################################
@@ -528,32 +542,31 @@ def thickness(edgeImage, pixelposition):
 
 
 def stackImages(imgArray,scale,lables=[]):
-    sizeW= imgArray[0][0].shape[1]
-    sizeH = imgArray[0][0].shape[0]
+    imgArray= np.float32(imgArray)
     rows = len(imgArray)
     cols = len(imgArray[0])
-    rowsAvailable = isinstance(imgArray[0], list)
+    rowsAvailable = isinstance(imgArray[0], list) or isinstance(imgArray[0],np.ndarray)
     width = imgArray[0][0].shape[1]
     height = imgArray[0][0].shape[0]
+    imageArrBlank = np.zeros((imgArray.shape[0],imgArray.shape[1],int(height*scale), int(width*scale)), np.float32)
     if rowsAvailable:
         for x in range ( 0, rows):
             for y in range(0, cols):
-                imgArray[x][y] = cv2.resize(imgArray[x][y], (sizeW, sizeH), None, scale, scale)
-                if len(imgArray[x][y].shape) == 2: imgArray[x][y]= cv2.cvtColor( imgArray[x][y], cv2.COLOR_GRAY2BGR)
-        imageBlank = np.zeros((height, width, 3), np.uint8)
+                resized = cv2.resize(imgArray[x][y], (0,0), fx=scale, fy=scale)
+                imageArrBlank[x][y] = resized*255
+        imageBlank = np.zeros((height*scale, width*scale), np.float32)
         hor = [imageBlank]*rows
         hor_con = [imageBlank]*rows
         for x in range(0, rows):
-            hor[x] = np.hstack(imgArray[x])
-            hor_con[x] = np.concatenate(imgArray[x])
+            hor[x] = np.hstack(imageArrBlank[x])
+            hor_con[x] = np.concatenate(imageArrBlank[x])
         ver = np.vstack(hor)
         ver_con = np.concatenate(hor)
     else:
         for x in range(0, rows):
-            imgArray[x] = cv2.resize(imgArray[x], (sizeW, sizeH), None, scale, scale)
-            if len(imgArray[x].shape) == 2: imgArray[x] = cv2.cvtColor(imgArray[x], cv2.COLOR_GRAY2BGR)
-        hor= np.hstack(imgArray)
-        hor_con= np.concatenate(imgArray)
+            imageArrBlank[x] = cv2.resize(imageArrBlank[x], (0,0), fx=scale, fy=scale)
+        hor= np.hstack(imageArrBlank)
+        hor_con= np.concatenate(imageArrBlank)
         ver = hor
     if len(lables) != 0:
         eachImgWidth= int(ver.shape[1] / cols)
@@ -568,7 +581,7 @@ def stackImages(imgArray,scale,lables=[]):
 def to_matrix(l, n):
     return [l[i:i+n] for i in range(0, len(l), n)]
 if __name__ == '__main__':
-    image = cv2.imread("dog.jpg")
+    image = cv2.imread("cat.jpeg")
     cv2.GaussianBlur(image, (3, 3), 3, image)
     image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     enhanced = truncate_to_one(generateEdgeEnhanced(image))
@@ -581,7 +594,7 @@ if __name__ == '__main__':
     #init_pop_show = to_matrix(init_pop,int(np.sqrt(popsize)))
     #init_pop_show = stackImages((init_pop),1)
     #cv2.imshow("stackedIm",init_pop_show)
-    optim = geneticAlgorithm(calc_pop_fitness,init_pop,lambda gen: gen > 3000,tournamentselect,twoPointcrossover,efficientbinarymut)
+    optim = geneticAlgorithm(calc_pop_fitness,init_pop,lambda gen: gen > 40000,tournamentselect,twoPointcrossover,aedgestructureMutation)
     cv2.imwrite("optimum.png", optim * 255)
     print("finish")
     cv2.waitKey(0)
