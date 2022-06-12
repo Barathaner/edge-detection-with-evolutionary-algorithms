@@ -36,6 +36,14 @@ def acceptSimulatedAnnealing(parentGenFitness, kidGenFitness, temperature):
         return annealingProbability <= np.exp(-np.abs(kidGenFitness-parentGenFitness) / temperature)
 
 
+
+################################################################################################
+################################################################################################
+#####################################genetic-Algorithm##########################################
+################################################################################################
+################################################################################################
+
+
 def geneticAlgorithm(popfitnessfunc,createInitPop,stoppingCond,selectPop,crossover,mutate):
     time = 0
     init_pop = createInitPop
@@ -57,3 +65,52 @@ def geneticAlgorithm(popfitnessfunc,createInitPop,stoppingCond,selectPop,crossov
         time+=1
         init_pop=kid_pop
     return init_pop[np.argmax(popfitness)]
+
+
+def tournamentselect(popfitness,kIndividualamount,enemieamount):
+    kParents=[]
+    for enemiesindices in range(0,kIndividualamount):
+        defenderIndex=random.randint(0,len(popfitness))
+        for enemy in range(2,enemieamount):
+            enemyIndex=random.randint(0,len(popfitness))
+            if(popfitness[defenderIndex]) > popfitness[enemyIndex]:
+                defenderIndex=enemyIndex
+        kParents.append(defenderIndex)
+    return kParents
+
+
+
+def efficientbinarymut(individual):
+    mutated=individual.copy()
+    next=0
+    while(next <= len(individual)):
+        mutated[next] = 1-mutated[next]
+        nextGeneProb= random.random()
+        next = int(np.log2(nextGeneProb) / np.log2(1-combprob))
+    return mutated
+
+
+
+
+def twoPointcrossover(parentA, parentB):
+    firstpoint= np.random.randint(0,len(parentA))
+    secondpoint=np.random.randint(0,len(parentA))
+    maxPoint=max(firstpoint,secondpoint)
+    minPoint=min(firstpoint,secondpoint)
+    kidC = np.empty(parentA.shape)
+    kidD = np.empty(parentA.shape)
+    for i in range(0, minPoint):
+        kidC[i] = parentA[i]
+        kidD[i] = parentB[i]
+    for j in range(minPoint,maxPoint):
+        kidC[j] = parentB[j]
+        kidD[j] = parentA[j]
+    for k in range(maxPoint, len(parentA)):
+        kidC[i] = parentA[i]
+        kidD[i] = parentB[i]
+    return kidC, kidD
+
+
+def onePointCrossover(parentA,parentB):
+
+    return
