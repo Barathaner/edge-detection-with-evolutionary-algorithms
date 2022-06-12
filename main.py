@@ -190,8 +190,8 @@ def twoPointcrossover(parentA, parentB):
         kidC[j] = parentB[j]
         kidD[j] = parentA[j]
     for k in range(maxPoint, len(parentA)):
-        kidC[i] = parentA[i]
-        kidD[i] = parentB[i]
+        kidC[k] = parentA[k]
+        kidD[k] = parentB[k]
     return kidC, kidD
 
 
