@@ -6,7 +6,7 @@ import numba as nb
 
 
 
-popsize=64
+popsize=16
 # basis edge structure two neighbouring set
 e_s1 = np.array([[0, 0, 0], [255, 255, 0], [0, 0, 255]], dtype='uint8')
 e_s2 = np.array([[0, 0, 255], [0, 255, 0], [0, 255, 0]], dtype='uint8')
@@ -75,6 +75,7 @@ combprob = 0.8
 ################################################################################################
 #####################################local-Searchh##############################################
 ################################################################################################
+
 def localsearch(fitnessfunc, createfirstGen, acceptanceCond, mutate, stoppingCond):
     time = 0
     parentGen = createfirstGen
@@ -97,10 +98,12 @@ def localsearch(fitnessfunc, createfirstGen, acceptanceCond, mutate, stoppingCon
     return parentGen
 
 
+@nb.njit(nogil=True)
 def acceptHillclimbing(parentGenFitness, kidGenFitness, sa_temp):
     return kidGenFitness < parentGenFitness, sa_temp
 
 
+@nb.njit(nogil=True)
 def acceptSimulatedAnnealing(parentGenFitness, kidGenFitness, temperature):
     temperature *= alpha
     if kidGenFitness < parentGenFitness:
@@ -170,16 +173,17 @@ def tournamentselect(pop,popfitness, kIndividualamount=2, enemieamount=3):
     return selectedPop
 
 
+@nb.njit(nogil=True)
 def efficientbinarymut(individual):
-
     mutated = individual.copy()
     next = 0
     while next < len(individual):
         mutated[next] = 1 - mutated[next]
-        next +=int(np.log2(random.random()) / np.log2(1 - combprob))
+        next +=int(np.log2(random.random()) / np.log2(1 - 1/len(individual)))
     return mutated
 
 
+@nb.njit(nogil=True)
 def twoPointcrossover(parentA, parentB):
     firstpoint = np.random.randint(0, len(parentA))
     secondpoint = np.random.randint(0, len(parentA))
@@ -203,23 +207,6 @@ def twoPointcrossover(parentA, parentB):
 #####################################specific-Operator##########################################
 ################################################################################################
 
-def calcDissimilarity(imgrey, x, y, darkregion, lightregion):
-    darkregionvalues = []
-    lightregionvalues = []
-    for pos in range(len(darkregion)):
-        greyvalueofdarkposx = x + darkregion[pos][0]
-        greyvalueofdarkposy = y + darkregion[pos][1]
-        greyvalueoflightposx = x + lightregion[pos][0]
-        greyvalueoflightposy = y + lightregion[pos][1]
-        try:
-            darkregionvalues.append(imgrey[greyvalueofdarkposx, greyvalueofdarkposy])
-            lightregionvalues.append(imgrey[greyvalueoflightposx, greyvalueoflightposy])
-        except:
-            continue
-
-    return abs((sum(darkregionvalues) / len(darkregionvalues)) - (sum(lightregionvalues) / len(lightregionvalues)))
-
-
 def generateEnhancedSobelImage(image):
     scale = 1
     delta = 0
@@ -235,13 +222,36 @@ def generateEnhancedSobelImage(image):
     return grad
 
 
+
+def calcDissimilarity(imgrey, x, y, darkregion, lightregion):
+    darkregionvalues = []
+    lightregionvalues = []
+    for pos in range(len(darkregion[0])):
+        greyvalueofdarkposx = x + darkregion[pos][0]
+        greyvalueofdarkposy = y + darkregion[pos][1]
+        greyvalueoflightposx = x + lightregion[pos][0]
+        greyvalueoflightposy = y + lightregion[pos][1]
+        try:
+            darkregionvalues.append(imgrey[greyvalueofdarkposy,greyvalueofdarkposx])
+            lightregionvalues.append(imgrey[greyvalueoflightposy,greyvalueoflightposx])
+        except:
+            continue
+
+    if len(darkregionvalues) == 0 or len(lightregionvalues)==0:
+        return 0
+
+    return abs(sum(darkregionvalues) / len(darkregionvalues) -sum(lightregionvalues) / len(lightregionvalues))
+
+
+
+
 def generateEdgeEnhanced(imgrey):
     dissimilarity_start_gen = np.zeros(imgrey.shape[:2], dtype='uint8')
 
     h = imgrey.shape[0]
     w = imgrey.shape[1]
-    for y in range(1, h - 2):
-        for x in range(1, w - 2):
+    for y in range(1, h-1):
+        for x in range(1, w-1):
             dissimilarity_edge_struct = 0
             bestfittingedgestructure = edge_structures[0]
             best_index = 0
@@ -252,7 +262,7 @@ def generateEdgeEnhanced(imgrey):
                     dissimilarity_edge_struct = dissresult
                     bestfittingedgestructure = edge_structures[es_index]
 
-            dissimilarity_start_gen[x, y] = dissimilarity_edge_struct
+            dissimilarity_start_gen[y, x] = dissimilarity_edge_struct
             if best_index <= 7:
                 x_up = x
                 y_up = y - 1
@@ -265,11 +275,15 @@ def generateEdgeEnhanced(imgrey):
                 up_diss = calcDissimilarity(imgrey, x_up, y_up, roi_one[best_index], roi_two[best_index])
                 down_diss = calcDissimilarity(imgrey, x_down, y_down, roi_one[best_index], roi_two[best_index])
                 left_diss = calcDissimilarity(imgrey, x_left, y_left, roi_one[best_index], roi_two[best_index])
-                right_diss = calcDissimilarity(imgrey, x_left, y_left, roi_one[best_index], roi_two[best_index])
+                right_diss = calcDissimilarity(imgrey, x_right, y_right, roi_one[best_index], roi_two[best_index])
 
                 if max([dissimilarity_edge_struct, up_diss, down_diss, left_diss,
-                        right_diss]) == dissimilarity_edge_struct:
-                    dissimilarity_start_gen[x - 1:x + 2, y - 1: y + 2] += int(dissimilarity_edge_struct / 3)
+                        right_diss]) != dissimilarity_edge_struct:
+                    delta = int(dissimilarity_edge_struct / 3)
+                    pixelsites= np.where(edge_structures[best_index]==255)
+                    dissimilarity_start_gen[y-1+pixelsites[0][0],x-1+pixelsites[1][0]] = int(max(0, dissimilarity_start_gen[y-1+pixelsites[0][0],x-1+pixelsites[1][0]]-delta))
+                    dissimilarity_start_gen[y-1+pixelsites[0][1],x-1+pixelsites[1][1]] = int(max(0,dissimilarity_start_gen[y-1+pixelsites[0][1],x-1+pixelsites[1][1]]-delta))
+                    dissimilarity_start_gen[y-1+pixelsites[0][2],x-1+pixelsites[1][2]] = int(max(0,dissimilarity_start_gen[y-1+pixelsites[0][2],x-1+pixelsites[1][2]]-delta))
 
             if 8 == best_index:
                 x_diagonal_up = x - 1
@@ -281,8 +295,12 @@ def generateEdgeEnhanced(imgrey):
                 diss_diag_down = calcDissimilarity(imgrey, x_diagonal_down, y_diagonal_down, roi_one[best_index],
                                                    roi_two[best_index])
 
-                if max([dissimilarity_edge_struct, diss_diag_up, diss_diag_down]) == dissimilarity_edge_struct:
-                    dissimilarity_start_gen[x - 1:x + 2, y - 1: y + 2] += int(dissimilarity_edge_struct / 3)
+                if max([dissimilarity_edge_struct, diss_diag_up, diss_diag_down]) != dissimilarity_edge_struct:
+                    delta = int(dissimilarity_edge_struct / 3)
+                    pixelsites= np.where(edge_structures[best_index]==255)
+                    dissimilarity_start_gen[y-1+pixelsites[0][0],x-1+pixelsites[1][0]] = int(max(0, dissimilarity_start_gen[y-1+pixelsites[0][0],x-1+pixelsites[1][0]]-delta))
+                    dissimilarity_start_gen[y-1+pixelsites[0][1],x-1+pixelsites[1][1]] = int(max(0,dissimilarity_start_gen[y-1+pixelsites[0][1],x-1+pixelsites[1][1]]-delta))
+                    dissimilarity_start_gen[y-1+pixelsites[0][2],x-1+pixelsites[1][2]] = int(max(0,dissimilarity_start_gen[y-1+pixelsites[0][2],x-1+pixelsites[1][2]]-delta))
             if 9 == best_index:
                 x_diagonal_up = x + 1
                 y_diagonal_up = y - 1
@@ -293,8 +311,12 @@ def generateEdgeEnhanced(imgrey):
                 diss_diag_down = calcDissimilarity(imgrey, x_diagonal_down, y_diagonal_down, roi_one[best_index],
                                                    roi_two[best_index])
 
-                if max([dissimilarity_edge_struct, diss_diag_up, diss_diag_down]) == dissimilarity_edge_struct:
-                    dissimilarity_start_gen[x - 1:x + 2, y - 1: y + 2] += int(dissimilarity_edge_struct / 3)
+                if max([dissimilarity_edge_struct, diss_diag_up, diss_diag_down]) != dissimilarity_edge_struct:
+                    delta = int(dissimilarity_edge_struct / 3)
+                    pixelsites= np.where(edge_structures[best_index]==255)
+                    dissimilarity_start_gen[y-1+pixelsites[0][0],x-1+pixelsites[1][0]] = int(max(0, dissimilarity_start_gen[y-1+pixelsites[0][0],x-1+pixelsites[1][0]]-delta))
+                    dissimilarity_start_gen[y-1+pixelsites[0][1],x-1+pixelsites[1][1]] = int(max(0,dissimilarity_start_gen[y-1+pixelsites[0][1],x-1+pixelsites[1][1]]-delta))
+                    dissimilarity_start_gen[y-1+pixelsites[0][2],x-1+pixelsites[1][2]] = int(max(0,dissimilarity_start_gen[y-1+pixelsites[0][2],x-1+pixelsites[1][2]]-delta))
             if 10 == best_index:
                 x_left = x - 1
                 y_left = y
@@ -305,8 +327,13 @@ def generateEdgeEnhanced(imgrey):
                 diss_right = calcDissimilarity(imgrey, x_right, y_right, roi_one[best_index],
                                                roi_two[best_index])
 
-                if max([dissimilarity_edge_struct, diss_left, diss_right]) == dissimilarity_edge_struct:
-                    dissimilarity_start_gen[x - 1:x + 2, y - 1: y + 2] += int(dissimilarity_edge_struct / 3)
+                if max([dissimilarity_edge_struct, diss_left, diss_right]) != dissimilarity_edge_struct:
+                    delta = int(dissimilarity_edge_struct / 3)
+                    pixelsites= np.where(edge_structures[best_index]==255)
+                    dissimilarity_start_gen[y-1+pixelsites[0][0],x-1+pixelsites[1][0]] = int(max(0, dissimilarity_start_gen[y-1+pixelsites[0][0],x-1+pixelsites[1][0]]-delta))
+                    dissimilarity_start_gen[y-1+pixelsites[0][1],x-1+pixelsites[1][1]] = int(max(0,dissimilarity_start_gen[y-1+pixelsites[0][1],x-1+pixelsites[1][1]]-delta))
+                    dissimilarity_start_gen[y-1+pixelsites[0][2],x-1+pixelsites[1][2]] = int(max(0,dissimilarity_start_gen[y-1+pixelsites[0][2],x-1+pixelsites[1][2]]-delta))
+
             if 11 == best_index:
                 x_up = x - 1
                 y_up = y
@@ -315,15 +342,18 @@ def generateEdgeEnhanced(imgrey):
                 up_diss = calcDissimilarity(imgrey, x_up, y_up, roi_one[best_index], roi_two[best_index])
                 down_diss = calcDissimilarity(imgrey, x_down, y_down, roi_one[best_index], roi_two[best_index])
 
-                if max([dissimilarity_edge_struct, up_diss, down_diss]) == dissimilarity_edge_struct:
-                    dissimilarity_start_gen[x - 1:x + 2, y - 1: y + 2] += int(dissimilarity_edge_struct / 3)
+                if max([dissimilarity_edge_struct, up_diss, down_diss]) != dissimilarity_edge_struct:
+                    delta = int(dissimilarity_edge_struct / 3)
+                    pixelsites= np.where(edge_structures[best_index]==255)
+                    dissimilarity_start_gen[y-1+pixelsites[0][0],x-1+pixelsites[1][0]] = int(max(0, dissimilarity_start_gen[y-1+pixelsites[0][0],x-1+pixelsites[1][0]]-delta))
+                    dissimilarity_start_gen[y-1+pixelsites[0][1],x-1+pixelsites[1][1]] = int(max(0,dissimilarity_start_gen[y-1+pixelsites[0][1],x-1+pixelsites[1][1]]-delta))
+                    dissimilarity_start_gen[y-1+pixelsites[0][2],x-1+pixelsites[1][2]] = int(max(0,dissimilarity_start_gen[y-1+pixelsites[0][2],x-1+pixelsites[1][2]]-delta))
 
     return dissimilarity_start_gen
 
 
 def truncate_to_one(inputImg):
-    img = inputImg
-    img = img.astype(float)
+    img = np.float32(inputImg)
     h = img.shape[0]
     w = img.shape[1]
     for y in range(0, h):
@@ -332,15 +362,15 @@ def truncate_to_one(inputImg):
 
     return img
 
-
 def createRandomChromosome(inputImg):
     enhancedImg = inputImg.copy()
     h = enhancedImg.shape[0]
     w = enhancedImg.shape[1]
     for y in range(0, h):
         for x in range(0, w):
-            enhancedImg[y, x] = np.random.randint(0, 2) * int(enhancedImg[y,x]+random.random())
+            enhancedImg[y, x] = np.random.randint(0, 2)
     return np.float32(enhancedImg)
+
 
 def createRandomPop(popsize,inputIm):
     pop = []
@@ -361,16 +391,23 @@ def chromosome2img(chromosome, img_shape):
 
 
 @nb.njit(nogil=True)
-def doublePixelChange(x):
-    n = x.copy()
-    randsite = random.randint(0, len(n))
-    if n[randsite] == 1:
-        n[randsite] = 0
-    else:
-        n[randsite] = 1
+def singlePixelChange(parent):
+    kid = parent.copy()
+    randsitex = random.randint(1, kid.shape[1] - 2)
+    randsitey = random.randint(1, kid.shape[0] - 2)
+    kid[randsitey,randsitex] = 1 - kid[randsitey,randsitex]
 
-    return n
+    return kid, [randsitey, randsitex]
 
+
+@nb.njit(nogil=True)
+def asinglePixelChange(parent):
+    kid = parent.copy()
+    randsitex = random.randint(1, kid.shape[1] - 2)
+    randsitey = random.randint(1, kid.shape[0] - 2)
+    kid[randsitey,randsitex] = 1 - kid[randsitey,randsitex]
+
+    return kid
 
 def edgestructureMutation(parent):
     kid = parent.copy()
@@ -383,6 +420,7 @@ def edgestructureMutation(parent):
     return kid, [randsitey, randsitex]
 
 
+@nb.njit(nogil=True)
 def aedgestructureMutation(parent):
     kid = parent.copy()
     randsitex = random.randint(1, kid.shape[1] - 2)
@@ -421,26 +459,26 @@ def decisionTreeCostWholeImage(edgeConfiguration):
 @nb.njit(nogil=True, parallel=True)
 def decisionTreeCostVariableWindow(edgeConfiguration, pixelsite, winsize=(3, 3)):
     fitness = 0
-    for y in nb.prange(-1 * int(winsize[0] / 2), int(winsize[1] / 2) + 1):
-        for x in nb.prange(-1, 2):
+    for y in nb.prange(-1 * int(winsize[0] / 2), int(winsize[0] / 2) + 1):
+        for x in nb.prange(-1 * int(winsize[1] / 2), int(winsize[1] / 2) + 1):
             newsite = [pixelsite[0] + y, pixelsite[1] + x]
             fitness = fitness + decisionTreeCostFunction(edgeConfiguration, newsite, enhanced)
     return fitness
 
 
 @nb.njit(nogil=True)
-def decisionTreeCostFunction(edgeImage, pixelsite, enhanced, w_c=0.25, w_d=15, w_e=0.25, w_f=8, w_t=6):
+def decisionTreeCostFunction(edgeImage, pixelsite, enhanced,w_c=0.25, w_d=2, w_e=0.5, w_f=3, w_t=6.5):
     costCurvature = 1
     costFragment = 1
     costNumberEdges = 1
     costThickness = 1
-    costDiss = 1
+    costDiss=1
     if edgeImage[pixelsite[0], pixelsite[1]] == 0:
-        costDiss = enhanced[pixelsite[0], pixelsite[1]]
         costCurvature = 0
         costFragment = 0
         costNumberEdges = 0
         costThickness = 0
+        costDiss = enhanced[pixelsite[0], pixelsite[1]]
     else:
         costDiss = 0
         costNumberEdges = 1
@@ -460,15 +498,19 @@ def decisionTreeCostFunction(edgeImage, pixelsite, enhanced, w_c=0.25, w_d=15, w
             costCurvature = 0
             costFragment = 0.5
             costThickness = 0
-        if edgePixelCounter >= 2:
+        if edgePixelCounter == 2:
+            costFragment = 0
+
             if thickness(edgeImage, pixelsite) == 1:
                 costThickness = 1
                 costCurvature = 1
-                costFragment = 0
             else:
                 costThickness = 0
-                costFragment = 0.5
                 costCurvature = curvature(edgeImage, pixelsite)
+        if edgePixelCounter >= 3:
+            costCurvature = 1
+            costFragment = 0
+            costThickness = thickness(edgeImage, pixelsite)
     return w_c * costCurvature + w_d * costDiss + w_e * costNumberEdges + w_f * costFragment + w_t * costThickness
 
 
@@ -531,7 +573,7 @@ def thickness(edgeImage, pixelposition):
                             grad += 1
                         if pixelsite[y, x - 1] == 1:
                             grad += 1
-                if grad > 2:
+                if grad > 1:
                     return 1
         return 0
     else:
@@ -580,22 +622,25 @@ def stackImages(imgArray,scale,lables=[]):
 
 def to_matrix(l, n):
     return [l[i:i+n] for i in range(0, len(l), n)]
+
+
 if __name__ == '__main__':
-    image = cv2.imread("cat.jpeg")
+    image = cv2.imread("kreis.png")
     cv2.GaussianBlur(image, (3, 3), 3, image)
     image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     enhanced = truncate_to_one(generateEdgeEnhanced(image))
+    cv2.imshow("enhanced", enhanced)
 
-    #init_gen = createRandomChromosome(enhanced)
-    #cv2.imshow("init", init_gen)
-    #optim = localsearch(decisionTreeCostVariableWindow, init_gen, acceptHillclimbing, edgestructureMutation,lambda gen: gen > 20000)
+    init_gen = createRandomChromosome(enhanced)
+    cv2.imshow("init", init_gen)
+    optim = localsearch(decisionTreeCostVariableWindow, init_gen, acceptSimulatedAnnealing, edgestructureMutation,lambda gen: gen > 20000)
 
     init_pop = createRandomPop(popsize,enhanced)
     #init_pop_show = to_matrix(init_pop,int(np.sqrt(popsize)))
     #init_pop_show = stackImages((init_pop),1)
     #cv2.imshow("stackedIm",init_pop_show)
-    optim = geneticAlgorithm(calc_pop_fitness,init_pop,lambda gen: gen > 40000,tournamentselect,twoPointcrossover,aedgestructureMutation)
-    cv2.imwrite("optimum.png", optim * 255)
+    #optim = geneticAlgorithm(calc_pop_fitness,init_pop,lambda gen: gen > 20000,tournamentselect,twoPointcrossover,asinglePixelChange)
+    cv2.imwrite("Optimdog.jpg", optim * 255)
     print("finish")
     cv2.waitKey(0)
     cv2.destroyAllWindows()
