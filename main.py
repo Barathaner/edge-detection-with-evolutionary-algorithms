@@ -6,7 +6,7 @@ import numba as nb
 
 
 
-popsize=16
+popsize=64
 # basis edge structure two neighbouring set
 e_s1 = np.array([[0, 0, 0], [255, 255, 0], [0, 0, 255]], dtype='uint8')
 e_s2 = np.array([[0, 0, 255], [0, 255, 0], [0, 255, 0]], dtype='uint8')
@@ -160,7 +160,7 @@ def cangeneticAlgorithm(popfitnessfunc,createInitPop,stoppingCond,selectPop,cros
         cv2.putText(resized,labelb , (5, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2,
                         cv2.LINE_AA)  # adding timer text
         cv2.imshow("stackedIm", resized)
-        cv2.waitKey(5)
+        cv2.waitKey(2)
         time+=1
         init_pop=kid_pop
     return init_pop[np.argmin(popfitness)]
@@ -209,11 +209,11 @@ def geneticAlgorithm(popfitnessfunc, createInitPop, stoppingCond, selectPop, cro
     return init_pop[np.argmin(popfitness)]
 
 
-def tournamentselect(pop,popfitness, kIndividualamount=2, enemieamount=3):
+def tournamentselect(pop,popfitness, kIndividualamount=2, enemieamount=12):
     kParents = []
     for enemiesindices in range(0, kIndividualamount):
         defenderIndex = random.randint(0, len(popfitness)-1)
-        for enemy in range(2, enemieamount):
+        for enemy in range(0, enemieamount):
             enemyIndex = random.randint(0, len(popfitness)-1)
             if (popfitness[defenderIndex]) > popfitness[enemyIndex]:
                 defenderIndex = enemyIndex
@@ -478,6 +478,13 @@ def aedgestructureMutation(parent):
 
     return kid
 
+
+def chooseRandomMut(parent):
+    randommut=random.randint(0,2)
+    if randommut ==0:
+        return aedgestructureMutation(parent)
+    else:
+        return asinglePixelChange(parent)
 ################################################################################################
 #####################################fitness-function###########################################
 ################################################################################################
@@ -513,7 +520,7 @@ def decisionTreeCostVariableWindow(edgeConfiguration, pixelsite, winsize=(3, 3))
 
 
 @nb.njit(nogil=True)
-def decisionTreeCostFunction(edgeImage, pixelsite, enhanced,w_c=0.25, w_d=2, w_e=0.5, w_f=3, w_t=6.5):
+def decisionTreeCostFunction(edgeImage, pixelsite, enhanced,w_c=0.25, w_d=3.75, w_e=1, w_f=3, w_t=6.71):
 #doggo w_c=0.25, w_d=3.75, w_e=1, w_f=3, w_t=6.71): sobel
 #wolf w_c=0.25, w_d=5, w_e=1, w_f=3, w_t=6.5): sobel
 #SMILEY w_c=0.25, w_d=5, w_e=0.3, w_f=3, w_t=6.75): en
@@ -675,21 +682,21 @@ def to_matrix(l, n):
 
 
 if __name__ == '__main__':
-    image = cv2.imread("kreis.png")
+    image = cv2.imread("dog.jpg")
     cv2.imshow("input", image)
     cv2.GaussianBlur(image, (3, 3), 3, image)
     image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-    enhanced = truncate_to_one(generateEdgeEnhanced(image))
+    enhanced = truncate_to_one(generateEnhancedSobelImage(image))
     enhancedres=resizeImage(enhanced,400)
     cv2.imshow("enhanced", enhancedres)
     cv2.imwrite("enhanc.jpg", enhancedres * 255)
 
-    init_gen = createRandomChromosome(enhanced)
-    init_genres=resizeImage(init_gen,400)
-
-    cv2.imshow("init", init_genres)
-    optim = localsearch(decisionTreeCostVariableWindow, init_gen, acceptSimulatedAnnealing, edgestructureMutation,lambda gen: gen > 20000)
-    cv2.imwrite("Optimlocal.jpg", optim * 255)
+    # init_gen = createRandomChromosome(enhanced)
+    # init_genres=resizeImage(init_gen,400)
+    #
+    # cv2.imshow("init", init_genres)
+    # optim = localsearch(decisionTreeCostVariableWindow, init_gen, acceptSimulatedAnnealing, edgestructureMutation,lambda gen: gen > 9000)
+    # cv2.imwrite("Optimlocal.jpg", optim * 255)
 
 
     init_pop = createRandomPop(popsize,enhanced)
@@ -697,7 +704,7 @@ if __name__ == '__main__':
     init_pop_show = stackImages(init_pop_show,1)
     init_popres=resizeImage(init_pop_show,100)
     cv2.imshow("stackedIm",init_popres)
-    optim = cangeneticAlgorithm(calc_pop_fitness,init_pop,lambda gen: gen > 20000,tournamentselect,twoPointcrossover,aedgestructureMutation)
+    optim = cangeneticAlgorithm(calc_pop_fitness,init_pop,lambda gen: gen > 20000,tournamentselect,twoPointcrossover,chooseRandomMut)
     cv2.imwrite("Optimgen.jpg", optim * 255)
     cv2.waitKey(0)
     cv2.destroyAllWindows()

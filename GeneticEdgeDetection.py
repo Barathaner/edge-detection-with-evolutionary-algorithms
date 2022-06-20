@@ -4,7 +4,20 @@ import numpy as np
 
 alpha=0.8
 combprob=0.8
-
+def qTournamentselect(q,pop,popfitness, kIndividualamount=2, enemieamount=12):
+    scores = []
+    for i in range(0, len(popfitness)):
+        siege=0
+        for j in range(0,q):
+            u = random.randint(0,len(popfitness))
+            if popfitness[i] < popfitness[j]:
+                siege+=1
+        scores.append(siege)
+    l = []
+    for i in range(0,kIndividualamount):
+        index = np.argmax(scores)
+        l.append(pop[index])
+    return l
 
 def localsearch(fitnessfunc,createfirstGen,acceptanceCond,mutate,stoppingCond):
     time = 0
