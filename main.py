@@ -89,14 +89,27 @@ def localsearch(fitnessfunc, createfirstGen, acceptanceCond, mutate, stoppingCon
         temperature = tempneu
         if acceptanceCondi:
             parentGen = kidGen
-            print("Generation: ", time, " cost: ", np.abs(parentGenFitness - kidGenFitness))
-            cv2.imshow("current Generation", kidGen)
+            show = kidGen*255
+            label="Gen: " + str(time)
+            resized=resizeImage(show,400)
+            resized=cv2.cvtColor(resized,cv2.COLOR_GRAY2BGR,resized)
+            cv2.putText(resized,label , (5, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2,
+                        cv2.LINE_AA)  # adding timer text
+            cv2.imshow("current Generation", resized)
             cv2.waitKey(1)
         else:
             parentGen = parentGen
 
     return parentGen
 
+def resizeImage(img,scale_percent):
+    width = int(img.shape[1] * scale_percent / 100)
+    height = int(img.shape[0] * scale_percent / 100)
+    dim = (width, height)
+
+    # resize image
+    resized = cv2.resize(img, dim, interpolation=cv2.INTER_AREA)
+    return resized
 
 @nb.njit(nogil=True)
 def acceptHillclimbing(parentGenFitness, kidGenFitness, sa_temp):
@@ -152,9 +165,14 @@ def geneticAlgorithm(popfitnessfunc, createInitPop, stoppingCond, selectPop, cro
         time += 1
         init_pop_show = to_matrix(init_pop, int(np.sqrt(popsize)))
         init_pop_show = stackImages(init_pop_show, 1)
-        cv2.imshow("stackedIm", init_pop_show)
-        cv2.waitKey(2)
-        print(time)
+        resized = resizeImage(init_pop_show,100)
+        resized=cv2.cvtColor(resized,cv2.COLOR_GRAY2BGR,resized)
+        label = "Gen: " + str(time)
+        cv2.putText(resized,label , (5, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2,
+                        cv2.LINE_AA)  # adding timer text
+        cv2.imshow("stackedIm", resized)
+        cv2.waitKey(5)
+
     return init_pop[np.argmin(popfitness)]
 
 
@@ -368,7 +386,7 @@ def createRandomChromosome(inputImg):
     w = enhancedImg.shape[1]
     for y in range(0, h):
         for x in range(0, w):
-            enhancedImg[y, x] = np.random.randint(0, 2)
+            enhancedImg[y, x] = np.random.randint(0, 2) * int(enhanced[y,x] + random.random())
     return np.float32(enhancedImg)
 
 
@@ -420,7 +438,6 @@ def edgestructureMutation(parent):
     return kid, [randsitey, randsitex]
 
 
-@nb.njit(nogil=True)
 def aedgestructureMutation(parent):
     kid = parent.copy()
     randsitex = random.randint(1, kid.shape[1] - 2)
@@ -468,6 +485,10 @@ def decisionTreeCostVariableWindow(edgeConfiguration, pixelsite, winsize=(3, 3))
 
 @nb.njit(nogil=True)
 def decisionTreeCostFunction(edgeImage, pixelsite, enhanced,w_c=0.25, w_d=2, w_e=0.5, w_f=3, w_t=6.5):
+#doggo w_c=0.25, w_d=3.75, w_e=1, w_f=3, w_t=6.71): sobel
+#wolf w_c=0.25, w_d=5, w_e=1, w_f=3, w_t=6.5): sobel
+#SMILEY w_c=0.25, w_d=5, w_e=0.3, w_f=3, w_t=6.75): en
+# kreis w_c=0.25, w_d=2, w_e=0.5, w_f=3, w_t=6.5): en
     costCurvature = 1
     costFragment = 1
     costNumberEdges = 1
@@ -626,21 +647,27 @@ def to_matrix(l, n):
 
 if __name__ == '__main__':
     image = cv2.imread("kreis.png")
+    cv2.imshow("input", image)
     cv2.GaussianBlur(image, (3, 3), 3, image)
     image = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     enhanced = truncate_to_one(generateEdgeEnhanced(image))
-    cv2.imshow("enhanced", enhanced)
+    enhancedres=resizeImage(enhanced,400)
+    cv2.imshow("enhanced", enhancedres)
+    cv2.imwrite("enhanc.jpg", enhancedres * 255)
 
     init_gen = createRandomChromosome(enhanced)
-    cv2.imshow("init", init_gen)
-    optim = localsearch(decisionTreeCostVariableWindow, init_gen, acceptSimulatedAnnealing, edgestructureMutation,lambda gen: gen > 20000)
+    init_genres=resizeImage(init_gen,400)
+
+    cv2.imshow("init", init_genres)
+    optim = localsearch(decisionTreeCostVariableWindow, init_gen, acceptSimulatedAnnealing, edgestructureMutation,lambda gen: gen > 10000)
+    cv2.imwrite("Optimlocal.jpg", optim * 255)
 
     init_pop = createRandomPop(popsize,enhanced)
-    #init_pop_show = to_matrix(init_pop,int(np.sqrt(popsize)))
-    #init_pop_show = stackImages((init_pop),1)
-    #cv2.imshow("stackedIm",init_pop_show)
-    #optim = geneticAlgorithm(calc_pop_fitness,init_pop,lambda gen: gen > 20000,tournamentselect,twoPointcrossover,asinglePixelChange)
-    cv2.imwrite("Optimdog.jpg", optim * 255)
-    print("finish")
+    init_pop_show = to_matrix(init_pop, int(np.sqrt(len(init_pop))))
+    init_pop_show = stackImages(init_pop_show,1)
+    init_popres=resizeImage(init_gen,100)
+    cv2.imshow("stackedIm",init_genres)
+    optim = geneticAlgorithm(calc_pop_fitness,init_pop,lambda gen: gen > 20000,tournamentselect,twoPointcrossover,aedgestructureMutation)
+    cv2.imwrite("Optimgen.jpg", optim * 255)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
