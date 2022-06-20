@@ -44,12 +44,12 @@ def acceptSimulatedAnnealing(parentGenFitness, kidGenFitness, temperature):
 ################################################################################################
 
 
-def geneticAlgorithm(popfitnessfunc,createInitPop,stoppingCond,selectPop,crossover,mutate):
+def cangeneticAlgorithm(popfitnessfunc,createInitPop,stoppingCond,selectPop,crossover,mutate):
     time = 0
     init_pop = createInitPop
     popfitness=popfitnessfunc(init_pop)
     while stoppingCond(time) !=True:
-        selectedPop = selectPop(init_pop,popfitness)
+        selectedPop = selectPop(init_pop,popfitness,len(init_pop))
         kid_pop=[]
         for i in range(1,len(init_pop)/2):
             randomcombprob = random.random()

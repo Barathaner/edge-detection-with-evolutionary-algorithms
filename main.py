@@ -130,7 +130,40 @@ def acceptSimulatedAnnealing(parentGenFitness, kidGenFitness, temperature):
 ################################################################################################
 #####################################genetic-Algorithm##########################################
 ################################################################################################
+def cangeneticAlgorithm(popfitnessfunc,createInitPop,stoppingCond,selectPop,crossover,mutate):
+    time = 0
+    init_pop = createInitPop
+    popfitness=popfitnessfunc(init_pop)
+    while stoppingCond(time) !=True:
+        selectedPop = selectPop(init_pop,popfitness,len(init_pop))
+        kid_pop=[]
+        for i in range(0,int(len(init_pop)/2)):
+            randomcombprob = random.random()
+            if randomcombprob <= combprob:
+                kidA,kidB= crossover(selectedPop[2*i-1],selectedPop[2*i])
+            else:
+                kidA,kidB=init_pop[2*i-1],init_pop[2*i]
+            kidA = mutate(kidA)
+            kidB = mutate(kidB)
+            kid_pop.append(kidA)
+            kid_pop.append(kidB)
+        popfitness=popfitnessfunc(kid_pop)
+        init_pop_show = to_matrix(kid_pop, int(np.sqrt(popsize)))
+        init_pop_show = stackImages(init_pop_show, 1)
+        resized = resizeImage(init_pop_show,100)
+        resized=cv2.cvtColor(resized,cv2.COLOR_GRAY2BGR,resized)
+        label = "Gen: " + str(time)
+        labelb="Best: " + str(int(min(popfitness)))
+        cv2.putText(resized,label , (5, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2,
+                        cv2.LINE_AA)  # adding timer text
 
+        cv2.putText(resized,labelb , (5, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2,
+                        cv2.LINE_AA)  # adding timer text
+        cv2.imshow("stackedIm", resized)
+        cv2.waitKey(5)
+        time+=1
+        init_pop=kid_pop
+    return init_pop[np.argmin(popfitness)]
 
 def geneticAlgorithm(popfitnessfunc, createInitPop, stoppingCond, selectPop, crossover, mutate):
 
@@ -141,15 +174,11 @@ def geneticAlgorithm(popfitnessfunc, createInitPop, stoppingCond, selectPop, cro
         selectedPop=selectPop(init_pop, popfitness)
         parentA = selectedPop[0]
         parentB = selectedPop[1]
-        parentA = img2chromosome(parentA)
-        parentB = img2chromosome(parentB)
         randomcombprob = random.random()
         if randomcombprob <= combprob:
             kidA, kidB = crossover(parentA,parentB)
         else:
             kidA, kidB = parentA,parentB
-        kidA = chromosome2img(kidA,init_pop[0].shape)
-        kidB = chromosome2img(kidB,init_pop[0].shape)
         kidA = mutate(kidA)
         kidB = mutate(kidB)
         kidAfitness=decisionTreeCostWholeImage(kidA)
@@ -170,6 +199,10 @@ def geneticAlgorithm(popfitnessfunc, createInitPop, stoppingCond, selectPop, cro
         label = "Gen: " + str(time)
         cv2.putText(resized,label , (5, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2,
                         cv2.LINE_AA)  # adding timer text
+
+        labelb="Best: " + str(int(min(popfitness)))
+        cv2.putText(resized,labelb , (5, 50), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2,
+                        cv2.LINE_AA)  # adding timer text
         cv2.imshow("stackedIm", resized)
         cv2.waitKey(5)
 
@@ -184,11 +217,8 @@ def tournamentselect(pop,popfitness, kIndividualamount=2, enemieamount=3):
             enemyIndex = random.randint(0, len(popfitness)-1)
             if (popfitness[defenderIndex]) > popfitness[enemyIndex]:
                 defenderIndex = enemyIndex
-        kParents.append(defenderIndex)
-    selectedPop=[]
-    for index in kParents:
-        selectedPop.append(pop[index])
-    return selectedPop
+        kParents.append(pop[defenderIndex])
+    return kParents
 
 
 @nb.njit(nogil=True)
@@ -201,10 +231,10 @@ def efficientbinarymut(individual):
     return mutated
 
 
-@nb.njit(nogil=True)
+@nb.njit
 def twoPointcrossover(parentA, parentB):
-    firstpoint = np.random.randint(0, len(parentA))
-    secondpoint = np.random.randint(0, len(parentA))
+    firstpoint = np.random.randint(0, len(parentA[0]))
+    secondpoint = np.random.randint(0, len(parentA[0]))
     maxPoint = max(firstpoint, secondpoint)
     minPoint = min(firstpoint, secondpoint)
     kidC = np.zeros(shape=parentA.shape)
@@ -386,7 +416,7 @@ def createRandomChromosome(inputImg):
     w = enhancedImg.shape[1]
     for y in range(0, h):
         for x in range(0, w):
-            enhancedImg[y, x] = np.random.randint(0, 2) * int(enhanced[y,x] + random.random())
+            enhancedImg[y, x] = np.random.randint(0, 2)# * int(enhanced[y,x] + random.random())
     return np.float32(enhancedImg)
 
 
@@ -452,7 +482,6 @@ def aedgestructureMutation(parent):
 #####################################fitness-function###########################################
 ################################################################################################
 
-@nb.njit(nogil=True)
 def calc_pop_fitness(pop):
 
     popfitness=[]
@@ -659,15 +688,16 @@ if __name__ == '__main__':
     init_genres=resizeImage(init_gen,400)
 
     cv2.imshow("init", init_genres)
-    optim = localsearch(decisionTreeCostVariableWindow, init_gen, acceptSimulatedAnnealing, edgestructureMutation,lambda gen: gen > 10000)
+    optim = localsearch(decisionTreeCostVariableWindow, init_gen, acceptSimulatedAnnealing, edgestructureMutation,lambda gen: gen > 20000)
     cv2.imwrite("Optimlocal.jpg", optim * 255)
+
 
     init_pop = createRandomPop(popsize,enhanced)
     init_pop_show = to_matrix(init_pop, int(np.sqrt(len(init_pop))))
     init_pop_show = stackImages(init_pop_show,1)
-    init_popres=resizeImage(init_gen,100)
-    cv2.imshow("stackedIm",init_genres)
-    optim = geneticAlgorithm(calc_pop_fitness,init_pop,lambda gen: gen > 20000,tournamentselect,twoPointcrossover,aedgestructureMutation)
+    init_popres=resizeImage(init_pop_show,100)
+    cv2.imshow("stackedIm",init_popres)
+    optim = cangeneticAlgorithm(calc_pop_fitness,init_pop,lambda gen: gen > 20000,tournamentselect,twoPointcrossover,aedgestructureMutation)
     cv2.imwrite("Optimgen.jpg", optim * 255)
     cv2.waitKey(0)
     cv2.destroyAllWindows()
