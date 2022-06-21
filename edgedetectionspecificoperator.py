@@ -44,7 +44,7 @@ edgestructs = [es_s1, es_s2, es_s3, es_s4, es_s5, es_s6, es_s7, es_s8, es_s9, es
 #####################################Fitness function###########################################
 ################################################################################################
 
-@nb.njit(parallel=True)
+@nb.njit(nogil=True,parallel=True)
 def decisionTreeCostWholeImage(edgeConfiguration):
     h = edgeConfiguration.shape[0]
     w = edgeConfiguration.shape[1]

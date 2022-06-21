@@ -39,18 +39,18 @@ def localsearch(fitnessfunc, createfirstGen, acceptanceCond, mutate, stoppingCon
         temperature = tempneu
         if acceptanceCondi:
             parentGen = kidGen
+            #proccess Generatio to showable image
+            show = parentGen*255
+            label="Gen: " + str(time)
+            resized=resizeImage(show,400)
+            resized=cv2.cvtColor(resized,cv2.COLOR_GRAY2BGR,resized)
+            cv2.putText(resized,label , (5, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2,
+                        cv2.LINE_AA)
+            cv2.imshow("current Generation", resized)
+            cv2.waitKey(1)
         else:
             parentGen = parentGen
 
-        #proccess Generatio to showable image
-        show = parentGen*255
-        label="Gen: " + str(time)
-        resized=resizeImage(show,400)
-        resized=cv2.cvtColor(resized,cv2.COLOR_GRAY2BGR,resized)
-        cv2.putText(resized,label , (5, 25), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 255), 2,
-                    cv2.LINE_AA)
-        cv2.imshow("current Generation", resized)
-        cv2.waitKey(1)
     return parentGen
 
 
