@@ -4,6 +4,8 @@
 
 Educational Python implementation of evolutionary-algorithms such as Local-Search (Hillclimbing,Simulated Annealing), Genetic Algorithms (Canonical Genetic Algorithm, Steady State) to approximate edges in a small (e.g. 128X128px) picture.
 
+![2022-06-30-18-26-29_Trim](https://user-images.githubusercontent.com/40422666/176731227-9c8f24f3-c6a7-470d-9272-698a9d10e1ff.gif)
+
 ## Installation
 ```bash
 git clone https://github.com/Barathaner/edge-detection-with-evolutionary-algorithms.git
