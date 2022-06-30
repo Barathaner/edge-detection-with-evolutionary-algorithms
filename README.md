@@ -4,8 +4,9 @@
 
 Educational Python implementation of evolutionary-algorithms such as Local-Search (Hillclimbing,Simulated Annealing), Genetic Algorithms (Canonical Genetic Algorithm, Steady State) to approximate edges in a small (e.g. 128X128px) picture.
 <p align="center">
-  <img src="[2022-06-30-18-26-29_Trim](https://user-images.githubusercontent.com/40422666/176732851-af018859-fd3a-4cce-a0ad-7be577f7c7ce.gif)" alt="animated" />
+  ![2022-06-30-18-26-29_Trim](https://user-images.githubusercontent.com/40422666/176733015-43d9863d-1765-42c3-846a-719d15ec86cd.gif)
 </p>
+
 
 
 ## Installation
