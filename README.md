@@ -6,7 +6,7 @@ Educational Python implementation of evolutionary-algorithms such as Local-Searc
 
 ## Installation
 
-![carbon (1)](https://user-images.githubusercontent.com/40422666/176724165-e5698551-9a0b-47b8-a05b-ee1eb1a66d4b.png)
+![carbon (2)](https://user-images.githubusercontent.com/40422666/176725160-64715712-02d8-43f8-917f-086bf5fe5aed.png)
 
 ## Basic Question in Edge Detection- Developing fitness function
 - 
