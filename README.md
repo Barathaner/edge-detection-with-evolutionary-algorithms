@@ -7,30 +7,36 @@ Educational Python implementation of evolutionary-algorithms such as Local-Searc
    <img src="https://user-images.githubusercontent.com/40422666/176733015-43d9863d-1765-42c3-846a-719d15ec86cd.gif" alt="animated" />
 </p>
 
-
-
 ## Installation
+
 ```bash
 git clone https://github.com/Barathaner/edge-detection-with-evolutionary-algorithms.git
 cd edge-detection-with-evolutionary-algorithms
 pip install -r requirements.txt
-
 ```
+## Usage
 
-## Basic Question in Edge Detection- Developing fitness function
+```bash
+python .\main.py
+```
+## How to contribute
+
+## Theory
+
+### Basic Question in Edge Detection- Developing fitness function
 - 
 - Looking for a neihgbourhood with strong signs of change
 - Size of the neighbourhood 
 - What metrics represent a change?
 
-## SObel Idee
+### SObel Idee
 - erst grau dann gauss
 - kernelprozess --- das kann ja bewertung sein? random kernel am anfang, dann bewertung ist 
 - optimalen edge filter erstellen
 - als cost minimization problem- allgemein genug um alle edge typen zu haben
 - eine kante ist : teilt zwei regionen die unterschiedliche charakteristiken haben
 
-## Cost Minimization function
+### Cost Minimization function
 - evaluates the quality of edge configurations
   - linear sum of weighted cost factors:
     - accuracy
@@ -39,7 +45,7 @@ pip install -r requirements.txt
 - Advantage local edge continuity
 - Search space large : 2^P P is Amount Pixel
 - two steps : dissimilarity enhancement -> enhance good points of imgrey (user based measure)
-### What is an edge?
+#### What is an edge?
 - boundary that seperates two regions that have dissimilar characteristics
 - should accurately partition dissimilar regions, thin, continous, sufficient length
   - e.g. geometry, surface reflectance characteristics, viewpoint, illumination
