@@ -1,6 +1,6 @@
-[![GitHub license](https://img.shields.io/github/license/Barathaner/edge-detection-with-evolutionary-alogirthms)](https://github.com/Barathaner/edge-detection-with-evolutionary-alogirthms/blob/main/LICENSE)
-![banner](https://user-images.githubusercontent.com/40422666/176719202-85e8fcbe-df35-4b65-990e-ce845c0d236b.png)
 
+![banner](https://user-images.githubusercontent.com/40422666/176719202-85e8fcbe-df35-4b65-990e-ce845c0d236b.png)
+[![GitHub license](https://img.shields.io/github/license/Barathaner/edge-detection-with-evolutionary-alogirthms)](https://github.com/Barathaner/edge-detection-with-evolutionary-alogirthms/blob/main/LICENSE)
 Python implementation using Genetic Algorithms,
 Tabu Search and, Evolutionary Tabu Search Algorithm to 
 approximate / detect edges in a small picture.
