@@ -4,12 +4,11 @@
 
 
 
-Python implementation using Genetic Algorithms,
-Tabu Search and, Evolutionary Tabu Search Algorithm to 
-approximate / detect edges in a small picture.
+Educational Python implementation of evolutionary-algorithms such as Local-Search (Hillclimbing,Simulated Annealing), Genetic Algorithms (Canonical Genetic Algorithm, Steady State) to approximate edges in a small (e.g. 128X128px) picture.
 
+##Installation
+![carbon](https://user-images.githubusercontent.com/40422666/176723903-30a63d9b-79ca-4e65-a147-ea12766e7b80.png)
 
-##What is the Chromosome? What to be optimized
 ##Basic Question in Edge Detection- Developing fitness function
 - 
 - Looking for a neihgbourhood with strong signs of change
