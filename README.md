@@ -10,18 +10,34 @@ Educational Python implementation of evolutionary-algorithms such as Local-Searc
 ## Installation
 
 ```bash
-git clone https://github.com/Barathaner/edge-detection-with-evolutionary-algorithms.git
-cd edge-detection-with-evolutionary-algorithms
-pip install -r requirements.txt
+$ git clone https://github.com/Barathaner/edge-detection-with-evolutionary-algorithms.git
+$ cd edge-detection-with-evolutionary-algorithms
+$ pip install -r requirements.txt
 ```
 ## Usage
 
 ```bash
-python .\main.py
+$ python .\main.py
 ```
-## How to contribute
+## How to Contribute
 
+1. Clone repo and create a new branch 
+```bash
+$ git checkout https://github.com/Barathaner/edge-detection-with-evolutionary-algorithms -b name_for_new_branch 
+```
+2. Make changes and test
+3. Submit Pull Request with comprehensive description of changes
 ## Theory
+Evolutionary algorithms are able to solve optimization problems through probabilistic changes in a valid candidate (mutation, recombination, ...). An optimizatio problem is defined 
+by a search space which holds all candidates, a fitness function, which evaluates the candidate and an aim (minimize or maximize).
+### What is the optimization Problem for edge detection?
+
+
+### How does the local search method solves this issue?
+
+### How does a genetic algorithm solve this issue?
+
+### What parameters work best?
 
 ### Basic Question in Edge Detection- Developing fitness function
 - 
