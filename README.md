@@ -2,17 +2,13 @@
 
 [![GitHub license](https://img.shields.io/github/license/Barathaner/edge-detection-with-evolutionary-alogirthms)](https://github.com/Barathaner/edge-detection-with-evolutionary-alogirthms/blob/main/LICENSE)
 
-
-
 Educational Python implementation of evolutionary-algorithms such as Local-Search (Hillclimbing,Simulated Annealing), Genetic Algorithms (Canonical Genetic Algorithm, Steady State) to approximate edges in a small (e.g. 128X128px) picture.
 
-##Installation
+## Installation
 
 ![carbon (1)](https://user-images.githubusercontent.com/40422666/176724165-e5698551-9a0b-47b8-a05b-ee1eb1a66d4b.png)
 
-
-
-##Basic Question in Edge Detection- Developing fitness function
+## Basic Question in Edge Detection- Developing fitness function
 - 
 - Looking for a neihgbourhood with strong signs of change
 - Size of the neighbourhood 
